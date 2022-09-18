@@ -21,3 +21,5 @@ cargo run -p tools --release --bin tester 0 1 2
 cargo run -p tools --release --bin tester
 ```
 /tools/in/にあるケース全部でテスト
+
+1ケース4.5secにしても1000ケース1m18secくらい

@@ -1,7 +1,7 @@
 use rand::prelude::*;
 use std::cmp;
 
-const TIMELIMIT: f64 = 4.8;
+const TIMELIMIT: f64 = 4.2;
 
 const DXY: [Point; 8] = [
     (1, 0),
@@ -21,25 +21,29 @@ fn main() {
     let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(0);
     let input = Input::new();
     let score_weight = ScoreWeight::new(&input);
-    let mut output: Output = vec![];
-    greedy(&input, &mut output, &score_weight, &mut rng);
-    println!("{}", output.len());
-    for out in output.iter() {
+
+    let mut best_output = vec![];
+    let mut best_score = 0;
+    while timer.get_time() < TIMELIMIT {
+        let mut output = vec![];
+        greedy(&input, &mut output, &score_weight, &mut rng);
+        let score = compute_score(&input, &output, &score_weight);
+        if best_score < score {
+            best_output = output;
+            best_score = score;
+        }
+    }
+    println!("{}", best_output.len());
+    for out in best_output.iter() {
         print!("{} {} ", out[0].0, out[0].1);
         print!("{} {} ", out[1].0, out[1].1);
         print!("{} {} ", out[2].0, out[2].1);
         println!("{} {}", out[3].0, out[3].1);
     }
-    let score = compute_score(&input, &output, &score_weight);
-    eprintln!("score:{}", score);
+    eprintln!("score:{}", best_score);
 }
 
-fn greedy<T: Rng>(
-    input: &Input,
-    out: &mut Vec<[Point; 4]>,
-    _score_weight: &ScoreWeight,
-    rng: &mut T,
-) {
+fn greedy<T: Rng>(input: &Input, out: &mut Output, _score_weight: &ScoreWeight, rng: &mut T) {
     // O(n^3)で印の打点候補を列挙する
     // 打点候補が空になるまで重みのroulette-whell-selectionで打点
     let mut state = State::new(input);
