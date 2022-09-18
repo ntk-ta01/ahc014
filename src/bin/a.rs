@@ -1,16 +1,14 @@
-use itertools::Itertools;
-
 const TIMELIMIT: f64 = 4.8;
 
 const DXY: [Point; 8] = [
-    Point { x: 1, y: 0 },
-    Point { x: 1, y: 1 },
-    Point { x: 0, y: 1 },
-    Point { x: !0, y: 1 },
-    Point { x: !0, y: 0 },
-    Point { x: !0, y: !0 },
-    Point { x: 0, y: !0 },
-    Point { x: 1, y: !0 },
+    (1, 0),
+    (1, 1),
+    (0, 1),
+    (!0, 1),
+    (!0, 0),
+    (!0, !0),
+    (0, !0),
+    (1, !0),
 ];
 
 type Output = Vec<[Point; 4]>;
@@ -19,10 +17,13 @@ fn main() {
     let input = Input::new();
     let output: Output = vec![];
     println!("{}", output.len());
-    for out in output {
-        println!("{} {} {} {}", out[0], out[1], out[2], out[3]);
+    for out in output.iter() {
+        print!("{} {} ", out[0].0, out[0].1);
+        print!("{} {} ", out[1].0, out[1].1);
+        print!("{} {} ", out[2].0, out[2].1);
+        println!("{} {}", out[3].0, out[3].1);
     }
-    let score = 0;
+    let score = compute_score(&input, &output);
     eprintln!("score:{}", score);
 }
 
@@ -45,26 +46,32 @@ impl Input {
             m: usize,
             ps: [(usize, usize); m],
         }
-        let ps = ps.into_iter().map(|(x, y)| Point::new(x, y)).collect_vec();
         Input { n, ps }
     }
 }
 
-#[derive(Clone, Debug)]
-struct Point {
-    x: usize,
-    y: usize,
+type Point = (usize, usize);
+
+fn weight((x, y): Point, n: usize) -> i64 {
+    let dx = x as i64 - n as i64 / 2;
+    let dy = y as i64 - n as i64 / 2;
+    dx * dx + dy * dy + 1
 }
 
-impl Point {
-    fn new(x: usize, y: usize) -> Self {
-        Point { x, y }
+fn compute_score(input: &Input, out: &[[Point; 4]]) -> i64 {
+    let mut num = 0;
+    for &p in &input.ps {
+        num += weight(p, input.n);
     }
-}
-
-impl std::fmt::Display for Point {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{} {}", self.x, self.y)?;
-        Ok(())
+    for rect in out {
+        num += weight(rect[0], input.n);
     }
+    let mut den = 0;
+    for i in 0..input.n {
+        for j in 0..input.n {
+            den += weight((i, j), input.n);
+        }
+    }
+    (1e6 * (input.n * input.n) as f64 / input.ps.len() as f64 * num as f64 / den as f64).round()
+        as i64
 }
