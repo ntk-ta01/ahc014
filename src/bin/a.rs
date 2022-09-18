@@ -45,7 +45,7 @@ fn main() {
 
 fn greedy<T: Rng>(input: &Input, out: &mut Output, _score_weight: &ScoreWeight, rng: &mut T) {
     // O(n^3)で印の打点候補を列挙する
-    // 打点候補が空になるまで重みのroulette-whell-selectionで打点
+    // 打点候補が空になるまで重みのroulette-wheel-selectionで打点
     let mut state = State::new(input);
     let mut insertable = construct_insertable(input, &state);
     // insertableをsort
