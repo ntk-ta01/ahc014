@@ -7,7 +7,7 @@ use std::{
     thread,
 };
 
-fn exec(file_path: PathBuf, print_flag: bool, out_flag: bool) -> i64 {
+fn exec(file_path: PathBuf, print_flag: bool, out_flag: bool) -> (i64, u8) {
     let mut file = fs::File::open(&file_path).unwrap();
     let mut buf = vec![];
     file.read_to_end(&mut buf).unwrap_or_else(|e| {
@@ -15,6 +15,7 @@ fn exec(file_path: PathBuf, print_flag: bool, out_flag: bool) -> i64 {
         eprintln!("{}", e);
         std::process::exit(1)
     });
+    let n = (buf[0] - b'0') * 10 + (buf[1] - b'0');
     let command = "cargo";
     let p = std::process::Command::new(command)
         .arg("run")
@@ -50,11 +51,12 @@ fn exec(file_path: PathBuf, print_flag: bool, out_flag: bool) -> i64 {
             score[1].parse::<i64>().unwrap()
         );
     }
-    score[1].parse::<i64>().unwrap()
+    (score[1].parse::<i64>().unwrap(), n)
 }
 
 fn main() {
     let out_flag = std::env::args().into_iter().any(|s| &s == "out");
+    let avg_flag = std::env::args().into_iter().any(|s| &s == "avg");
     let exec_list = std::env::args()
         .into_iter()
         .skip(1)
@@ -78,10 +80,24 @@ fn main() {
     }
     let mut total_score = 0;
     let case_num = handles.len();
+    let mut scores = vec![vec![]; 62];
     for handle in handles {
-        let score = handle.join().unwrap();
+        let (score, n) = handle.join().unwrap();
         total_score += score;
+        scores[(n as usize) / 10].push(score);
     }
     const PRETESTNUM: i64 = 50;
     println!("total_score:{}", total_score * PRETESTNUM / case_num as i64);
+    if avg_flag {
+        for (n, scores) in scores.iter().enumerate() {
+            if scores.is_empty() {
+                continue;
+            }
+            println!(
+                "n=({}*), avg_score={}",
+                n,
+                scores.iter().sum::<i64>() * PRETESTNUM / scores.len() as i64
+            );
+        }
+    }
 }
