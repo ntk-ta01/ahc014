@@ -7,7 +7,7 @@ use std::{
     thread,
 };
 
-fn exec(file_path: PathBuf) -> i64 {
+fn exec(file_path: PathBuf, print_flag: bool) -> i64 {
     let mut file = fs::File::open(&file_path).unwrap();
     let mut buf = vec![];
     file.read_to_end(&mut buf).unwrap_or_else(|e| {
@@ -34,12 +34,14 @@ fn exec(file_path: PathBuf) -> i64 {
     let b = String::from_utf8(output.stderr).unwrap();
     let s = b.split('\n').collect::<Vec<_>>();
     let score = s[s.len() - 2].split(':').collect::<Vec<_>>();
-    // println!(
-    //     "{}|{}:{}",
-    //     file_path.display(),
-    //     score[0],
-    //     score[1].parse::<i64>().unwrap()
-    // );
+    if print_flag {
+        println!(
+            "{}|{}:{}",
+            file_path.display(),
+            score[0],
+            score[1].parse::<i64>().unwrap()
+        );
+    }
     score[1].parse::<i64>().unwrap()
 }
 
@@ -60,7 +62,8 @@ fn main() {
             continue;
         }
         let file_path = file.path();
-        let handle = thread::spawn(move || exec(file_path));
+        let pring_flag = !exec_list.is_empty();
+        let handle = thread::spawn(move || exec(file_path, pring_flag));
         handles.push(handle);
     }
     let mut total_score = 0;
