@@ -1,1 +1,9 @@
-/tools
+/tools/in
+/tools/Cargo.lock
+/tools/Cargo.toml
+/tools/README.html
+/tools/README.md
+/tools/seeds.txt
+/tools/src/lib.rs
+/tools/src/bin/gen.rs
+/tools/src/bin/vis.rs
