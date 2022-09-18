@@ -7,7 +7,7 @@ use std::{
     thread,
 };
 
-fn exec(file_path: PathBuf, print_flag: bool) -> i64 {
+fn exec(file_path: PathBuf, print_flag: bool, out_flag: bool) -> i64 {
     let mut file = fs::File::open(&file_path).unwrap();
     let mut buf = vec![];
     file.read_to_end(&mut buf).unwrap_or_else(|e| {
@@ -31,6 +31,14 @@ fn exec(file_path: PathBuf, print_flag: bool) -> i64 {
     let mut stdin = p.stdin.as_ref().unwrap();
     stdin.write_all(&buf).unwrap();
     let output = p.wait_with_output().unwrap();
+    if out_flag {
+        let file_path = format!(
+            "./tools/out/{}",
+            file_path.file_name().unwrap().to_string_lossy()
+        );
+        let mut file = fs::File::create(&file_path).unwrap();
+        file.write_all(&output.stdout).unwrap();
+    }
     let b = String::from_utf8(output.stderr).unwrap();
     let s = b.split('\n').collect::<Vec<_>>();
     let score = s[s.len() - 2].split(':').collect::<Vec<_>>();
@@ -46,9 +54,11 @@ fn exec(file_path: PathBuf, print_flag: bool) -> i64 {
 }
 
 fn main() {
+    let out_flag = std::env::args().into_iter().any(|s| &s == "out");
     let exec_list = std::env::args()
         .into_iter()
         .skip(1)
+        .filter(|s| s.parse::<usize>().is_ok())
         .map(|s| {
             // println!("{:04}.txt", s.parse::<usize>().unwrap());
             format!("{:04}.txt", s.parse::<usize>().unwrap())
@@ -62,8 +72,8 @@ fn main() {
             continue;
         }
         let file_path = file.path();
-        let pring_flag = !exec_list.is_empty();
-        let handle = thread::spawn(move || exec(file_path, pring_flag));
+        let print_flag = !exec_list.is_empty();
+        let handle = thread::spawn(move || exec(file_path, print_flag, out_flag));
         handles.push(handle);
     }
     let mut total_score = 0;

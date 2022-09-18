@@ -1,7 +1,7 @@
 use rand::prelude::*;
 use std::cmp;
 
-const TIMELIMIT: f64 = 4.2;
+const TIMELIMIT: f64 = 0.5;
 
 const DXY: [Point; 8] = [
     (1, 0),

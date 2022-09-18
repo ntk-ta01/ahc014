@@ -1,4 +1,5 @@
 /tools/in
+/tools/out
 /tools/Cargo.lock
 /tools/Cargo.toml
 /tools/README.html
