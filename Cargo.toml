@@ -10,6 +10,11 @@ ahc014-a = { alias = "a", problem = "https://atcoder.jp/contests/ahc014/tasks/ah
 name = "ahc014-a"
 path = "src/bin/a.rs"
 
+[workspace]
+members = [
+    "tools",
+]
+
 [dependencies]
 num = "=0.2.1"
 num-bigint = "=0.2.6"

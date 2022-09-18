@@ -22,6 +22,8 @@ fn main() {
     for out in output {
         println!("{} {} {} {}", out[0], out[1], out[2], out[3]);
     }
+    let score = 0;
+    eprintln!("score:{}", score);
 }
 
 struct State {

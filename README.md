@@ -7,3 +7,17 @@ Visualizerを触る。seed=0で45万点くらいまで手動で出る。Twitter�
 - 印付き点を管理する
 - 印を打つ候補を列挙する
 - 得点計算関数を作成する
+
+# tester
+```
+cargo run -p tools --release --bin tester 0
+```
+/tools/in/0000.txtを用いてテスト
+```
+cargo run -p tools --release --bin tester 0 1 2
+```
+/tools/in/0000.txt ~ /tools/in/0002.txtを用いてテスト
+```
+cargo run -p tools --release --bin tester
+```
+/tools/in/にあるケース全部でテスト
