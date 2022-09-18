@@ -26,5 +26,15 @@ cargo run -p tools --release --bin tester
 
 1ケース4.5secにしても1000ケース1m18secくらい
 
+```
+cargo run -p tools --release --bin tester 0 out
+```
+`out`をつけると`/tools/out/*.txt`に解を記録。
+
+```
+cargo run -p tools --release --bin tester avg
+```
+`avg`をつけると、`n=(3*)`などNの大きさごとに分けて得点を追加で表示する。
+
 # 方針1
 打点可能点を列挙して重みで降順ソート。roulette-wheel-selectionして時間いっぱい貪欲してbestを取る。プレテスト35M。
