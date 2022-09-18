@@ -137,14 +137,15 @@ fn construct_insertable(input: &Input, state: &State) -> Vec<[Point; 4]> {
 }
 
 fn select_insertable<T: Rng>(input: &Input, rng: &mut T, insertable: &[[Point; 4]]) -> [Point; 4] {
-    let mut weights = vec![0; insertable.len()];
+    let mut weights = vec![0.0; insertable.len()];
     for (ws, rect) in weights.iter_mut().zip(insertable.iter()) {
-        *ws = weight(rect[0], input.n);
+        let w = weight(rect[0], input.n);
+        *ws = (w * w * w) as f64;
     }
-    let sum = weights.iter().sum::<i64>() as f64;
+    let sum = weights.iter().sum::<f64>();
     let mut prob = vec![0.0; insertable.len()];
     for (p, w) in prob.iter_mut().zip(weights) {
-        *p = w as f64 / sum;
+        *p = w / sum;
     }
     let mut accum_prob = 0.0;
     for (&rect, &pr) in insertable.iter().zip(prob.iter()) {
