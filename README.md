@@ -23,3 +23,6 @@ cargo run -p tools --release --bin tester
 /tools/in/にあるケース全部でテスト
 
 1ケース4.5secにしても1000ケース1m18secくらい
+
+# 方針1
+打点可能点を列挙して重みで降順ソート。roulette-wheel-selectionして時間いっぱい貪欲してbestを取る。プレテスト35M。
