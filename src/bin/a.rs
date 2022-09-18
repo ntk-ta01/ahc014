@@ -15,6 +15,7 @@ type Output = Vec<[Point; 4]>;
 
 fn main() {
     let input = Input::new();
+    let score_weight = ScoreWeight::new(&input);
     let output: Output = vec![];
     println!("{}", output.len());
     for out in output.iter() {
@@ -23,13 +24,24 @@ fn main() {
         print!("{} {} ", out[2].0, out[2].1);
         println!("{} {}", out[3].0, out[3].1);
     }
-    let score = compute_score(&input, &output);
+    let score = compute_score(&input, &output, &score_weight);
     eprintln!("score:{}", score);
 }
 
 struct State {
     has_point: Vec<Vec<bool>>,
     used: Vec<Vec<[bool; 8]>>,
+}
+
+impl State {
+    fn new(input: &Input) -> Self {
+        let mut has_point = vec![vec![false; input.n]; input.n];
+        let used = vec![vec![[false; 8]; input.n]; input.n];
+        for i in 0..input.ps.len() {
+            has_point[input.ps[i].0][input.ps[i].1] = true;
+        }
+        Self { has_point, used }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -58,20 +70,34 @@ fn weight((x, y): Point, n: usize) -> i64 {
     dx * dx + dy * dy + 1
 }
 
-fn compute_score(input: &Input, out: &[[Point; 4]]) -> i64 {
-    let mut num = 0;
-    for &p in &input.ps {
-        num += weight(p, input.n);
+struct ScoreWeight {
+    ps_weight: i64,
+    den: f64,
+}
+
+impl ScoreWeight {
+    fn new(input: &Input) -> Self {
+        let mut ps_weight = 0;
+        for &p in &input.ps {
+            ps_weight += weight(p, input.n);
+        }
+        let mut den = 0;
+        for i in 0..input.n {
+            for j in 0..input.n {
+                den += weight((i, j), input.n);
+            }
+        }
+        let den = den as f64;
+        ScoreWeight { ps_weight, den }
     }
+}
+
+fn compute_score(input: &Input, out: &[[Point; 4]], score_weight: &ScoreWeight) -> i64 {
+    let mut num = score_weight.ps_weight;
     for rect in out {
         num += weight(rect[0], input.n);
     }
-    let mut den = 0;
-    for i in 0..input.n {
-        for j in 0..input.n {
-            den += weight((i, j), input.n);
-        }
-    }
-    (1e6 * (input.n * input.n) as f64 / input.ps.len() as f64 * num as f64 / den as f64).round()
-        as i64
+    (1e6 * (input.n * input.n) as f64 / input.ps.len() as f64 * num as f64
+        / score_weight.den as f64)
+        .round() as i64
 }
