@@ -34,12 +34,12 @@ fn exec(file_path: PathBuf) -> i64 {
     let b = String::from_utf8(output.stderr).unwrap();
     let s = b.split('\n').collect::<Vec<_>>();
     let score = s[s.len() - 2].split(':').collect::<Vec<_>>();
-    println!(
-        "{}|{}:{}",
-        file_path.display(),
-        score[0],
-        score[1].parse::<i64>().unwrap()
-    );
+    // println!(
+    //     "{}|{}:{}",
+    //     file_path.display(),
+    //     score[0],
+    //     score[1].parse::<i64>().unwrap()
+    // );
     score[1].parse::<i64>().unwrap()
 }
 
