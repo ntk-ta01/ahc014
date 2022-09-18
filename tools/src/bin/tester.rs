@@ -63,7 +63,12 @@ fn main() {
         let handle = thread::spawn(move || exec(file_path));
         handles.push(handle);
     }
+    let mut total_score = 0;
+    let case_num = handles.len();
     for handle in handles {
-        handle.join().unwrap();
+        let score = handle.join().unwrap();
+        total_score += score;
     }
+    const PRETESTNUM: i64 = 50;
+    println!("total_score:{}", total_score * PRETESTNUM / case_num as i64);
 }
