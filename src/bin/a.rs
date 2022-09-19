@@ -1,7 +1,7 @@
 use rand::prelude::*;
 use std::cmp;
 
-const TIMELIMIT: f64 = 0.5;
+const TIMELIMIT: f64 = 4.5;
 
 const DXY: [Point; 8] = [
     (1, 0),
@@ -44,14 +44,16 @@ fn main() {
 }
 
 fn greedy<T: Rng>(input: &Input, out: &mut Output, _score_weight: &ScoreWeight, rng: &mut T) {
-    // O(n^3)で印の打点候補を列挙する
+    // 始めにO(n^3)で印の打点候補を列挙する
     // 打点候補が空になるまで重みのroulette-wheel-selectionで打点
+    // 印の打点候補の更新はO(n^2)
     let mut state = State::new(input);
     let mut insertable = construct_insertable(input, &state);
     // insertableをsort
     insertable.sort_by_key(|rect| cmp::Reverse(weight(rect[0], input.n)));
     while !insertable.is_empty() {
         let rect = select_insertable(input, rng, &insertable);
+        // let rect = insertable[0];
         state.apply_move(&rect);
         out.push(rect);
         // insertable = construct_insertable(input, &state);
@@ -149,67 +151,73 @@ fn update_insertable(
         .filter(|rect| state.check_move(rect))
         .map(|rect| *rect)
         .collect();
+    // pre_p0から8方向のそれぞれで一番近い点を探す
+    let mut near_points = vec![];
+    for &(dx, dy) in DXY.iter() {
+        let (mut x, mut y) = pre_p0;
+        let mut found = false;
+        x += dx;
+        y += dy;
+        while x < input.n && y < input.n {
+            if state.has_point[x][y] {
+                near_points.push((x, y));
+                found = true;
+                break;
+            }
+            x += dx;
+            y += dy;
+        }
+        if !found {
+            near_points.push((!0, !0));
+        }
+    }
     // pre_p0から8方向にp0候補を探しに行く p0候補は!has_pointである
     for (i, &(dx, dy)) in DXY.iter().enumerate() {
         let (mut x, mut y) = pre_p0;
         x += dx;
         y += dy;
         while x < input.n && y < input.n && !state.has_point[x][y] {
+            // p0はこれから印を打ちたい点
             let p0 = (x, y);
-            // p0から4方向の点を調べる (i^4) = (p0からpre_p0方向)の {-2, -1, +1, +2}の4方向
-            // -2方向か+2方向を選ぶときは、どちらか片方とpre_p0を選びp2の位置に点が存在するかcheck_move
+            // p1 = pre_p0
+            // p2 = (pre_p0から {-2, +2}方向の点)
+            // p3を探す
+            let p1 = pre_p0;
             let dir = i ^ 4;
             for j in [8 - 2, 2] {
                 let search_dir = (dir + j) % 8;
-                let (mut x2, mut y2) = (x, y);
-                let (dx2, dy2) = DXY[search_dir];
-                x2 += dx2;
-                y2 += dy2;
-                while x2 < input.n && y2 < input.n && !state.has_point[x][y] {
-                    x2 += dx2;
-                    y2 += dy2;
-                }
-                if x2 < input.n && y2 < input.n {
-                    let p1 = pre_p0;
-                    let p3 = (x2, y2);
-                    // p2を探す
-                    let dx03 = p3.0 as i64 - p0.0 as i64;
-                    let dy03 = p3.1 as i64 - p0.1 as i64;
-                    let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
+                let p2 = near_points[search_dir];
+                if p2 != (!0, !0) {
+                    let dx01 = p0.0 as i64 - p1.0 as i64;
+                    let dy01 = p0.1 as i64 - p1.1 as i64;
+                    let p3 = ((p2.0 as i64 + dx01) as usize, (p2.1 as i64 + dy01) as usize);
                     let rect = [p0, p1, p2, p3];
-                    if p2.0 < input.n && p2.1 < input.n && state.check_move(&rect) {
-                        insertable.push(rect);
-                    }
-                }
-            }
-            {
-                // +1方向と-1方向は同時に選ぶ。pre_p0がp2
-                let mut odd_points = vec![];
-                for j in [8 - 1, 1] {
-                    let search_dir = (dir + j) % 8;
-                    let (mut x2, mut y2) = (x, y);
-                    let (dx2, dy2) = DXY[search_dir];
-                    x2 += dx2;
-                    y2 += dy2;
-                    while x2 < input.n && y2 < input.n && !state.has_point[x][y] {
-                        x2 += dx2;
-                        y2 += dy2;
-                    }
-                    if x2 < input.n && y2 < input.n {
-                        odd_points.push((x2, y2));
-                    } else {
-                        odd_points.push((!0, !0));
-                    }
-                }
-                if odd_points[0] != (!0, !0) && odd_points[1] != (!0, !0) {
-                    let rect = [p0, odd_points[0], pre_p0, odd_points[1]];
-                    if state.check_move(&rect) {
+                    if p3.0 < input.n && p3.1 < input.n && state.check_move(&rect) {
                         insertable.push(rect);
                     }
                 }
             }
             x += dx;
             y += dy;
+        }
+    }
+    for (i, _) in DXY.iter().enumerate() {
+        // (i+1) % 8方向にp0が存在するか調べる
+        // p1 = i方向の点
+        // p2 = pre_p0
+        // p3 = (i+2) % 8方向の点
+        let p1 = near_points[i];
+        let p2 = pre_p0;
+        let p3 = near_points[(i + 2) % 8];
+        if p1 == (!0, !0) || p3 == (!0, !0) {
+            continue;
+        }
+        let dx21 = p1.0 as i64 - p2.0 as i64;
+        let dy21 = p1.1 as i64 - p2.1 as i64;
+        let p0 = ((p3.0 as i64 + dx21) as usize, (p3.1 as i64 + dy21) as usize);
+        let rect = [p0, p1, p2, p3];
+        if p0.0 < input.n && p0.1 < input.n && state.check_move(&rect) {
+            insertable.push(rect);
         }
     }
 }
@@ -267,8 +275,8 @@ impl State {
         {
             return false;
         }
-        // 長方形が外周上に印を持つか、長方形が他の長方形との共通部分を持つかを調べる部分だが、
-        // 印をつける点の探し方によっては省略可能
+        // 長方形が外周上に印を持つか、長方形が他の長方形との共通部分を持つかを調べる
+        // 省略はできない update_insertableで共通部分を持つこともある
         for i in 0..4 {
             let (mut x, mut y) = rect[i];
             let (tx, ty) = rect[(i + 1) % 4];
