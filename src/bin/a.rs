@@ -173,6 +173,7 @@ fn update_insertable(
     }
     // pre_p0から8方向にp0候補を探しに行く p0候補は!has_pointである
     for (i, &(dx, dy)) in DXY.iter().enumerate() {
+        // pre_p0をp1とする方針
         let (mut x, mut y) = pre_p0;
         x += dx;
         y += dy;
@@ -200,8 +201,8 @@ fn update_insertable(
             x += dx;
             y += dy;
         }
-    }
-    for (i, _) in DXY.iter().enumerate() {
+
+        // pre_p0をp2とする方針
         // (i+1) % 8方向にp0が存在するか調べる
         // p1 = i方向の点
         // p2 = pre_p0
