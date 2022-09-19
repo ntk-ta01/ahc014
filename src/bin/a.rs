@@ -230,7 +230,8 @@ fn select_insertable<T: Rng>(input: &Input, rng: &mut T, insertable: &[[Point; 4
     let mut weights = vec![0.0; insertable.len()];
     for (ws, rect) in weights.iter_mut().zip(insertable.iter()) {
         let w = weight(rect[0], input.n);
-        *ws = (w * w * w) as f64;
+        let area = area(rect);
+        *ws = (w * w * w * w) as f64 / (area * area) as f64;
     }
     let sum = weights.iter().sum::<f64>();
     let mut prob = vec![0.0; insertable.len()];
