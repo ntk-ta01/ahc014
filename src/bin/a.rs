@@ -1,7 +1,7 @@
 use rand::prelude::*;
 use std::cmp;
 
-const GREEDYTIMELIMIT: f64 = 4.5;
+const GREEDYTIMELIMIT: f64 = 0.5;
 
 const DXY: [Point; 8] = [
     (1, 0),
