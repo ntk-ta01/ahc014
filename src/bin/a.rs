@@ -24,7 +24,15 @@ fn main() {
 
     let mut best_output = vec![];
     let mut best_score = 0;
-    while timer.get_time() < TIMELIMIT {
+    let mut count = 0;
+    loop {
+        count += 1;
+        if 100 < count {
+            if timer.get_time() > TIMELIMIT {
+                break;
+            }
+            count = 0;
+        }
         let mut output = vec![];
         greedy(&input, &mut output, &score_weight, &mut rng);
         let score = compute_score(&input, &output, &score_weight);
