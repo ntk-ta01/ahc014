@@ -174,51 +174,54 @@ fn update_insertable(
     // pre_p0から8方向にp0候補を探しに行く p0候補は!has_pointである
     for (i, &(dx, dy)) in DXY.iter().enumerate() {
         // pre_p0をp1とする方針
-        let (mut x, mut y) = pre_p0;
-        x += dx;
-        y += dy;
-        while x < input.n && y < input.n && !state.has_point[x][y] {
-            // p0はこれから印を打ちたい点
-            let p0 = (x, y);
-            // p1 = pre_p0
-            // p2 = (pre_p0から {-2, +2}方向の点)
-            // p3を探す
-            let p1 = pre_p0;
-            let dir = i ^ 4;
-            for j in [8 - 2, 2].iter() {
-                let search_dir = (dir + j) % 8;
-                let p2 = near_points[search_dir];
-                if p2 != (!0, !0) {
-                    let dx01 = p0.0 as i64 - p1.0 as i64;
-                    let dy01 = p0.1 as i64 - p1.1 as i64;
-                    let p3 = ((p2.0 as i64 + dx01) as usize, (p2.1 as i64 + dy01) as usize);
-                    let rect = [p0, p1, p2, p3];
-                    if p3.0 < input.n && p3.1 < input.n && state.check_move(&rect) {
-                        insertable.push(rect);
-                    }
-                }
-            }
+        {
+            let (mut x, mut y) = pre_p0;
             x += dx;
             y += dy;
+            while x < input.n && y < input.n && !state.has_point[x][y] {
+                // p0はこれから印を打ちたい点
+                let p0 = (x, y);
+                // p1 = pre_p0
+                // p2 = (pre_p0から {-2, +2}方向の点)
+                // p3を探す
+                let p1 = pre_p0;
+                let dir = i ^ 4;
+                for j in [8 - 2, 2].iter() {
+                    let search_dir = (dir + j) % 8;
+                    let p2 = near_points[search_dir];
+                    if p2 != (!0, !0) {
+                        let dx01 = p0.0 as i64 - p1.0 as i64;
+                        let dy01 = p0.1 as i64 - p1.1 as i64;
+                        let p3 = ((p2.0 as i64 + dx01) as usize, (p2.1 as i64 + dy01) as usize);
+                        let rect = [p0, p1, p2, p3];
+                        if p3.0 < input.n && p3.1 < input.n && state.check_move(&rect) {
+                            insertable.push(rect);
+                        }
+                    }
+                }
+                x += dx;
+                y += dy;
+            }
         }
-
-        // pre_p0をp2とする方針
-        // (i+1) % 8方向にp0が存在するか調べる
-        // p1 = i方向の点
-        // p2 = pre_p0
-        // p3 = (i+2) % 8方向の点
-        let p1 = near_points[i];
-        let p2 = pre_p0;
-        let p3 = near_points[(i + 2) % 8];
-        if p1 == (!0, !0) || p3 == (!0, !0) {
-            continue;
-        }
-        let dx21 = p1.0 as i64 - p2.0 as i64;
-        let dy21 = p1.1 as i64 - p2.1 as i64;
-        let p0 = ((p3.0 as i64 + dx21) as usize, (p3.1 as i64 + dy21) as usize);
-        let rect = [p0, p1, p2, p3];
-        if p0.0 < input.n && p0.1 < input.n && state.check_move(&rect) {
-            insertable.push(rect);
+        {
+            // pre_p0をp2とする方針
+            // (i+1) % 8方向にp0が存在するか調べる
+            // p1 = i方向の点
+            // p2 = pre_p0
+            // p3 = (i+2) % 8方向の点
+            let p1 = near_points[i];
+            let p2 = pre_p0;
+            let p3 = near_points[(i + 2) % 8];
+            if p1 == (!0, !0) || p3 == (!0, !0) {
+                continue;
+            }
+            let dx21 = p1.0 as i64 - p2.0 as i64;
+            let dy21 = p1.1 as i64 - p2.1 as i64;
+            let p0 = ((p3.0 as i64 + dx21) as usize, (p3.1 as i64 + dy21) as usize);
+            let rect = [p0, p1, p2, p3];
+            if p0.0 < input.n && p0.1 < input.n && state.check_move(&rect) {
+                insertable.push(rect);
+            }
         }
     }
 }
