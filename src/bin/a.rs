@@ -184,7 +184,7 @@ fn update_insertable(
             // p3を探す
             let p1 = pre_p0;
             let dir = i ^ 4;
-            for j in [8 - 2, 2] {
+            for j in [8 - 2, 2].iter() {
                 let search_dir = (dir + j) % 8;
                 let p2 = near_points[search_dir];
                 if p2 != (!0, !0) {
