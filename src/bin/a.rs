@@ -50,7 +50,7 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, _score_weight: &ScoreWeight, 
     let mut state = State::new(input);
     let mut insertable = construct_insertable(input, &state);
     // insertableをsort
-    insertable.sort_by_key(|rect| cmp::Reverse(weight(rect[0], input.n)));
+    insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
     while !insertable.is_empty() {
         let rect = select_insertable(input, rng, &insertable);
         // let rect = insertable[0];
@@ -58,7 +58,7 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, _score_weight: &ScoreWeight, 
         out.push(rect);
         // insertable = construct_insertable(input, &state);
         update_insertable(input, &state, rect[0], &mut insertable);
-        insertable.sort_by_key(|rect| cmp::Reverse(weight(rect[0], input.n)));
+        insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
     }
 }
 
@@ -346,6 +346,24 @@ fn weight((x, y): Point, n: usize) -> i64 {
     let dx = x as i64 - n as i64 / 2;
     let dy = y as i64 - n as i64 / 2;
     dx * dx + dy * dy + 1
+}
+
+fn area(rect: &[Point; 4]) -> i64 {
+    let dx01 = (rect[1].0 as i64 - rect[0].0 as i64).abs();
+    let dy01 = (rect[1].1 as i64 - rect[0].1 as i64).abs();
+    let dx03 = (rect[3].0 as i64 - rect[0].0 as i64).abs();
+    let dy03 = (rect[3].1 as i64 - rect[0].1 as i64).abs();
+    if dx01 == 0 || dy01 == 0 {
+        // 軸に平行
+        let e01 = dx01.max(dy01);
+        let e03 = dx03.max(dy03);
+        e01 * e01 * e03 * e03
+    } else {
+        // 45度傾いている
+        let e01square = dx01 * dx01 + dy01 * dy01;
+        let e03square = dx03 * dx03 + dy03 * dy03;
+        e01square * e03square
+    }
 }
 
 struct ScoreWeight {
