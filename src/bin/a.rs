@@ -1,7 +1,7 @@
 use rand::prelude::*;
 use std::cmp;
 
-const TIMELIMIT: f64 = 4.9;
+const GREEDYTIMELIMIT: f64 = 4.5;
 
 const DXY: [Point; 8] = [
     (1, 0),
@@ -24,7 +24,7 @@ fn main() {
 
     let mut best_output = vec![];
     let mut best_score = 0;
-    while timer.get_time() < TIMELIMIT {
+    while timer.get_time() < GREEDYTIMELIMIT {
         let mut output = vec![];
         greedy(&input, &mut output, &score_weight, &mut rng);
         let score = compute_score(&input, &output, &score_weight);
@@ -231,7 +231,7 @@ fn select_insertable<T: Rng>(input: &Input, rng: &mut T, insertable: &[[Point; 4
     for (ws, rect) in weights.iter_mut().zip(insertable.iter()) {
         let w = weight(rect[0], input.n);
         let area = area(rect);
-        *ws = (w * w * w * w) as f64 / (area * area) as f64;
+        *ws = (w * w) as f64 / (area * area * area) as f64;
     }
     let sum = weights.iter().sum::<f64>();
     let mut prob = vec![0.0; insertable.len()];
@@ -361,9 +361,9 @@ fn area(rect: &[Point; 4]) -> i64 {
         e01 * e01 * e03 * e03
     } else {
         // 45度傾いている
-        let e01square = dx01 * dx01 + dy01 * dy01;
-        let e03square = dx03 * dx03 + dy03 * dy03;
-        e01square * e03square
+        let e01 = dx01;
+        let e03 = dx03;
+        e01 * e03 * 2
     }
 }
 
