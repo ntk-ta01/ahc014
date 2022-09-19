@@ -54,7 +54,8 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, _score_weight: &ScoreWeight, 
         let rect = select_insertable(input, rng, &insertable);
         state.apply_move(&rect);
         out.push(rect);
-        insertable = construct_insertable(input, &state);
+        // insertable = construct_insertable(input, &state);
+        update_insertable(input, &state, rect[0], &mut insertable);
         insertable.sort_by_key(|rect| cmp::Reverse(weight(rect[0], input.n)));
     }
 }
@@ -134,6 +135,83 @@ fn construct_insertable(input: &Input, state: &State) -> Vec<[Point; 4]> {
         }
     }
     insertable
+}
+
+fn update_insertable(
+    input: &Input,
+    state: &State,
+    pre_p0: Point,
+    insertable: &mut Vec<[Point; 4]>,
+) {
+    // 打点によって更新されたstateに合わせてinsertableの各要素をfilter
+    *insertable = insertable
+        .iter_mut()
+        .filter(|rect| state.check_move(rect))
+        .map(|rect| *rect)
+        .collect();
+    // pre_p0から8方向にp0候補を探しに行く p0候補は!has_pointである
+    for (i, &(dx, dy)) in DXY.iter().enumerate() {
+        let (mut x, mut y) = pre_p0;
+        x += dx;
+        y += dy;
+        while x < input.n && y < input.n && !state.has_point[x][y] {
+            let p0 = (x, y);
+            // p0から4方向の点を調べる (i^4) = (p0からpre_p0方向)の {-2, -1, +1, +2}の4方向
+            // -2方向か+2方向を選ぶときは、どちらか片方とpre_p0を選びp2の位置に点が存在するかcheck_move
+            let dir = i ^ 4;
+            for j in [8 - 2, 2] {
+                let search_dir = (dir + j) % 8;
+                let (mut x2, mut y2) = (x, y);
+                let (dx2, dy2) = DXY[search_dir];
+                x2 += dx2;
+                y2 += dy2;
+                while x2 < input.n && y2 < input.n && !state.has_point[x][y] {
+                    x2 += dx2;
+                    y2 += dy2;
+                }
+                if x2 < input.n && y2 < input.n {
+                    let p1 = pre_p0;
+                    let p3 = (x2, y2);
+                    // p2を探す
+                    let dx03 = p3.0 as i64 - p0.0 as i64;
+                    let dy03 = p3.1 as i64 - p0.1 as i64;
+                    let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
+                    let rect = [p0, p1, p2, p3];
+                    if p2.0 < input.n && p2.1 < input.n && state.check_move(&rect) {
+                        insertable.push(rect);
+                    }
+                }
+            }
+            {
+                // +1方向と-1方向は同時に選ぶ。pre_p0がp2
+                let mut odd_points = vec![];
+                for j in [8 - 1, 1] {
+                    let search_dir = (dir + j) % 8;
+                    let (mut x2, mut y2) = (x, y);
+                    let (dx2, dy2) = DXY[search_dir];
+                    x2 += dx2;
+                    y2 += dy2;
+                    while x2 < input.n && y2 < input.n && !state.has_point[x][y] {
+                        x2 += dx2;
+                        y2 += dy2;
+                    }
+                    if x2 < input.n && y2 < input.n {
+                        odd_points.push((x2, y2));
+                    } else {
+                        odd_points.push((!0, !0));
+                    }
+                }
+                if odd_points[0] != (!0, !0) && odd_points[1] != (!0, !0) {
+                    let rect = [p0, odd_points[0], pre_p0, odd_points[1]];
+                    if state.check_move(&rect) {
+                        insertable.push(rect);
+                    }
+                }
+            }
+            x += dx;
+            y += dy;
+        }
+    }
 }
 
 fn select_insertable<T: Rng>(input: &Input, rng: &mut T, insertable: &[[Point; 4]]) -> [Point; 4] {
