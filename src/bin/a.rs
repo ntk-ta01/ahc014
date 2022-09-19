@@ -27,7 +27,7 @@ fn main() {
     let mut count = 0;
     loop {
         count += 1;
-        if 100 < count {
+        if 10 < count {
             if timer.get_time() > TIMELIMIT {
                 break;
             }
