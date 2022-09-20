@@ -2,7 +2,7 @@ use rand::prelude::*;
 use std::cmp;
 
 const GREEDYTIMELIMIT: f64 = 0.5;
-const TIMELIMIT: f64 = 4.9;
+const TIMELIMIT: f64 = 4.5;
 
 const DXY: [Point; 8] = [
     (1, 0),
@@ -55,19 +55,23 @@ fn annealing<T: Rng>(
     const DMAX: usize = 8;
     const T0: f64 = 30.0;
     const T1: f64 = 0.01;
-    let mut temp;
+    let mut temp = T0;
     let mut prob;
     let mut now_score = compute_score(input, out, score_weight);
 
     let mut best_score = now_score;
     let mut best_output = out.clone();
-
+    let mut count = 0;
     loop {
         let passed = timer.get_time() / TIMELIMIT;
         if passed >= 1.0 {
             break;
         }
-        temp = T0.powf(1.0 - passed) * T1.powf(passed);
+        if count > 100 {
+            temp = T0.powf(1.0 - passed) * T1.powf(passed);
+            count = 0;
+        }
+        count += 1;
 
         let mut new_state = State::new(input);
         let mut new_out = vec![];
