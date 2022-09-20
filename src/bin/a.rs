@@ -2,7 +2,7 @@ use rand::prelude::*;
 use std::cmp;
 
 const GREEDYTIMELIMIT: f64 = 0.5;
-const TIMELIMIT: f64 = 4.5;
+const TIMELIMIT: f64 = 4.9;
 
 const DXY: [Point; 8] = [
     (1, 0),
@@ -52,8 +52,8 @@ fn annealing<T: Rng>(
     rng: &mut T,
     timer: Timer,
 ) -> i64 {
-    const DMAX: usize = 10;
-    const T0: f64 = 1.0;
+    const DMAX: usize = 8;
+    const T0: f64 = 30.0;
     const T1: f64 = 0.01;
     let mut temp;
     let mut prob;
@@ -76,6 +76,9 @@ fn annealing<T: Rng>(
         let pos = rng.gen_range(0, out.len());
         for (i, &rect) in out.iter().enumerate() {
             if pos <= i && i < pos + d {
+                continue;
+            }
+            if out.len() <= pos + d && i < (pos + d) % out.len() {
                 continue;
             }
             if new_state.check_move(&rect) {

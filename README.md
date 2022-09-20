@@ -56,3 +56,5 @@ cargo run -p tools --release --bin tester avg
 とりあえずILSじゃなくていいか
 
 とりあえずrandomにd個削除+greedy同様の挿入で焼きなまし法。プレテスト42.8M。
+大きい面積の長方形から消したいな…
+面積に応じて再挿入禁止でもいい
