@@ -51,7 +51,15 @@ fn exec(file_path: PathBuf, print_flag: bool, out_flag: bool) -> (i64, u8) {
             score[1].parse::<i64>().unwrap()
         );
     }
-    (score[1].parse::<i64>().unwrap(), n)
+    if let Ok(score) = score[1].parse::<i64>() {
+        (score, n)
+    } else {
+        eprintln!(
+            "failed ./tools/out/{}",
+            file_path.file_name().unwrap().to_string_lossy()
+        );
+        (0, n)
+    }
 }
 
 fn main() {

@@ -2,7 +2,7 @@ use rand::prelude::*;
 use std::cmp;
 
 const GREEDYTIMELIMIT: f64 = 0.5;
-const TIMELIMIT: f64 = 4.5;
+const TIMELIMIT: f64 = 4.95;
 
 const DXY: [Point; 8] = [
     (1, 0),
@@ -53,8 +53,8 @@ fn annealing<T: Rng>(
     timer: Timer,
 ) -> i64 {
     const DMAX: usize = 8;
-    const T0: f64 = 30.0;
-    const T1: f64 = 0.01;
+    const T0: f64 = 100.0;
+    const T1: f64 = 0.001;
     let mut temp = T0;
     let mut prob;
     let mut now_score = compute_score(input, out, score_weight);
@@ -76,6 +76,7 @@ fn annealing<T: Rng>(
         let mut new_state = State::new(input);
         let mut new_out = vec![];
         // 近傍解作成
+        // randomにd個選んで削除
         let d = rng.gen_range(1, DMAX);
         let pos = rng.gen_range(0, out.len());
         for (i, &rect) in out.iter().enumerate() {
@@ -306,9 +307,17 @@ fn select_insertable<T: Rng>(input: &Input, rng: &mut T, insertable: &[[Point; 4
     for (ws, rect) in weights.iter_mut().zip(insertable.iter()) {
         let w = weight(rect[0], input.n);
         let area = area(rect);
-        *ws = (w * w) as f64 / (area * area * area) as f64;
+        *ws = (w * w) as f64 / (area * area * area * area) as f64;
     }
-    let sum = weights.iter().sum::<f64>();
+    let mut sum = weights.iter().sum::<f64>();
+    if sum < 0.0 || sum.is_nan() || sum.is_infinite() || weights.iter().any(|w| *w < 0.0) {
+        for (ws, rect) in weights.iter_mut().zip(insertable.iter()) {
+            let w = weight(rect[0], input.n);
+            let area = area(rect);
+            *ws = (w * w) as f64 / (area * area * area) as f64;
+        }
+        sum = weights.iter().sum::<f64>();
+    }
     let mut prob = vec![0.0; insertable.len()];
     for (p, w) in prob.iter_mut().zip(weights) {
         *p = w / sum;
