@@ -2,6 +2,7 @@ use rand::prelude::*;
 use std::cmp;
 
 const GREEDYTIMELIMIT: f64 = 0.5;
+const TIMELIMIT: f64 = 4.5;
 
 const DXY: [Point; 8] = [
     (1, 0),
@@ -26,13 +27,14 @@ fn main() {
     let mut best_score = 0;
     while timer.get_time() < GREEDYTIMELIMIT {
         let mut output = vec![];
-        greedy(&input, &mut output, &score_weight, &mut rng);
+        greedy(&input, &mut output, &mut rng);
         let score = compute_score(&input, &output, &score_weight);
         if best_score < score {
             best_output = output;
             best_score = score;
         }
     }
+    best_score = annealing(&input, &mut best_output, &score_weight, &mut rng, timer);
     println!("{}", best_output.len());
     for out in best_output.iter() {
         print!("{} {} ", out[0].0, out[0].1);
@@ -43,7 +45,73 @@ fn main() {
     eprintln!("score:{}", best_score);
 }
 
-fn greedy<T: Rng>(input: &Input, out: &mut Output, _score_weight: &ScoreWeight, rng: &mut T) {
+fn annealing<T: Rng>(
+    input: &Input,
+    out: &mut Output,
+    score_weight: &ScoreWeight,
+    rng: &mut T,
+    timer: Timer,
+) -> i64 {
+    const DMAX: usize = 10;
+    const T0: f64 = 1.0;
+    const T1: f64 = 0.01;
+    let mut temp;
+    let mut prob;
+    let mut now_score = compute_score(input, out, score_weight);
+
+    let mut best_score = now_score;
+    let mut best_output = out.clone();
+
+    loop {
+        let passed = timer.get_time() / TIMELIMIT;
+        if passed >= 1.0 {
+            break;
+        }
+        temp = T0.powf(1.0 - passed) * T1.powf(passed);
+
+        let mut new_state = State::new(input);
+        let mut new_out = vec![];
+        // 近傍解作成
+        let d = rng.gen_range(1, DMAX);
+        let pos = rng.gen_range(0, out.len());
+        for (i, &rect) in out.iter().enumerate() {
+            if pos <= i && i < pos + d {
+                continue;
+            }
+            if new_state.check_move(&rect) {
+                new_state.apply_move(&rect);
+                new_out.push(rect);
+            }
+        }
+        let mut insertable = construct_insertable(input, &new_state);
+        // insertableをsort
+        insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+        while !insertable.is_empty() {
+            let rect = select_insertable(input, rng, &insertable);
+            new_state.apply_move(&rect);
+            out.push(rect);
+            update_insertable(input, &new_state, rect[0], &mut insertable);
+            insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+        }
+
+        // 近傍解作成ここまで
+        let new_score = compute_score(input, &new_out, score_weight);
+        prob = f64::exp((new_score - now_score) as f64 / temp);
+        if now_score < new_score || rng.gen_bool(prob) {
+            now_score = new_score;
+            *out = new_out;
+        }
+
+        if best_score < now_score {
+            best_score = now_score;
+            best_output = out.clone();
+        }
+    }
+    *out = best_output;
+    best_score
+}
+
+fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T) {
     // 始めにO(n^3)で印の打点候補を列挙する
     // 打点候補が空になるまで重みのroulette-wheel-selectionで打点
     // 印の打点候補の更新はO(n^2)
