@@ -1,5 +1,8 @@
 use rand::prelude::*;
-use std::{cmp, collections::VecDeque};
+use std::{
+    cmp,
+    collections::{HashMap, VecDeque},
+};
 
 const GREEDYTIMELIMIT: f64 = 0.5;
 const TIMELIMIT: f64 = 4.95;
@@ -95,6 +98,8 @@ fn annealing<T: Rng>(
 
     let mut tabu_list = VecDeque::new();
     let mut no_improved = 0;
+
+    // let mut appeared_map = HashMap::new();
     loop {
         let passed = timer.get_time() / TIMELIMIT;
         if passed >= 1.0 {
@@ -144,6 +149,8 @@ fn annealing<T: Rng>(
         prob = f64::exp((new_score - now_score) as f64 / temp);
         if now_score < new_score || rng.gen_bool(prob) {
             now_score = new_score;
+            // let e = appeared_map.entry(new_out.clone()).or_insert(0);
+            // *e += 1;
             *out = new_out;
         }
 
@@ -164,6 +171,10 @@ fn annealing<T: Rng>(
         }
     }
     // eprintln!("no improved: {}", no_improved);
+    // eprintln!(
+    //     "cycleing time: {}",
+    //     appeared_map.iter().filter(|(_, v)| 1 < **v).count()
+    // );
     *out = best_output;
     best_score
 }
