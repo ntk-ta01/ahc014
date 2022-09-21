@@ -1,8 +1,5 @@
 use rand::prelude::*;
-use std::{
-    cmp,
-    collections::{HashMap, VecDeque},
-};
+use std::{cmp, collections::VecDeque};
 
 const GREEDYTIMELIMIT: f64 = 0.5;
 const TIMELIMIT: f64 = 4.95;
