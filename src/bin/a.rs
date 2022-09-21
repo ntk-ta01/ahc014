@@ -82,6 +82,8 @@ fn annealing<T: Rng>(
     const T0: f64 = 7843.321346;
     const T1: f64 = 7609.796863;
     const TABUTENURE: usize = 4;
+    const BACKTOBEST: usize = 16000;
+    let back_to_best = BACKTOBEST / input.n;
     let mut temp = T0;
     // let mut temp = params.t0;
     let mut prob;
@@ -92,6 +94,7 @@ fn annealing<T: Rng>(
     let mut count = 0;
 
     let mut tabu_list = VecDeque::new();
+    let mut no_improved = 0;
     loop {
         let passed = timer.get_time() / TIMELIMIT;
         if passed >= 1.0 {
@@ -129,6 +132,7 @@ fn annealing<T: Rng>(
         insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
         while !insertable.is_empty() {
             let rect = select_insertable(input, rng, &insertable);
+            // let rect = insertable[0];
             new_state.apply_move(&rect);
             out.push(rect);
             update_insertable(input, &new_state, rect[0], &mut insertable, &tabu_list);
@@ -144,10 +148,22 @@ fn annealing<T: Rng>(
         }
 
         if best_score < now_score {
+            // eprintln!("time: {}", timer.get_time());
+            // eprintln!("no improved: {} / passed: {:.3}", no_improved, passed);
+            no_improved = 0;
             best_score = now_score;
             best_output = out.clone();
+        } else {
+            no_improved += 1;
+        }
+
+        if back_to_best < no_improved {
+            now_score = best_score;
+            *out = best_output.clone();
+            no_improved = 0;
         }
     }
+    // eprintln!("no improved: {}", no_improved);
     *out = best_output;
     best_score
 }
