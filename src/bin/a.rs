@@ -140,19 +140,15 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T) {
 
 fn construct_insertable(input: &Input, state: &State) -> Vec<[Point; 4]> {
     let mut insertable = vec![];
-    for i in 0..input.n {
-        for j in 0..input.n {
-            if state.has_point[i][j] {
-                continue;
-            }
+    for (i, row) in state.has_point.iter().enumerate() {
+        for (j, _) in row.iter().enumerate().filter(|(_, has)| !*has) {
             let p0 = (i, j);
             // p0に対してp1, p2, p3を探す
             // p0の周り8点を列挙して、4C2ずつrect[2]が打点可能でcheck_moveを通るかチェック
             let mut even_points = vec![];
             let mut odd_points = vec![];
-            for (i, &(dx, dy)) in DXY.iter().enumerate() {
+            'construct_p0: for (i, &(dx, dy)) in DXY.iter().enumerate() {
                 let (mut x, mut y) = p0;
-                let mut inserted = false;
                 x += dx;
                 y += dy;
                 while x < input.n && y < input.n {
@@ -162,18 +158,15 @@ fn construct_insertable(input: &Input, state: &State) -> Vec<[Point; 4]> {
                         } else {
                             odd_points.push((x, y));
                         }
-                        inserted = true;
-                        break;
+                        continue 'construct_p0;
                     }
                     x += dx;
                     y += dy;
                 }
-                if !inserted {
-                    if i % 2 == 0 {
-                        even_points.push((!0, !0));
-                    } else {
-                        odd_points.push((!0, !0));
-                    }
+                if i % 2 == 0 {
+                    even_points.push((!0, !0));
+                } else {
+                    odd_points.push((!0, !0));
                 }
             }
             for (i, &p1) in even_points.iter().enumerate() {
