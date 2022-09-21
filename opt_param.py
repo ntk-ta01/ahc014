@@ -4,10 +4,10 @@ import joblib
 import statistics
 
 n_cores = -1
-n_files = 300
+n_files = 100
 
 
-def calc_score_each(seed: int,  t0: float, t1: float):
+def calc_score_each(seed: int, t0: float, t1: float):
     in_file = open(f"tools/in/{seed:04}.txt", 'r')
     # out_file = open(f"tools/out/{seed:04}.txt", 'w')
     process = subprocess.run(["cargo", "run", "--release", str(t0), str(t1)],
@@ -22,8 +22,9 @@ def calc_score(t0: float, t1: float):
 
 
 def objective(trial: optuna.trial.Trial):
-    t0 = trial.suggest_float("t0", 1.0, 12500.0)
-    t1 = trial.suggest_float("t1", 0.00001, t0)
+    t0 = trial.suggest_float("t0", 6000.0, 9000.0)
+    t1 = trial.suggest_float("t1", 5000.0, t0)
+    # tabu_tenure = trial.suggest_int("tabu_tenure", 1, 30)
     scores = calc_score(t0, t1)
     return statistics.mean(scores)
 
@@ -31,7 +32,7 @@ def objective(trial: optuna.trial.Trial):
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize",
                                 storage="sqlite:///ahc014.db",
-                                study_name="tune_temp_and_dmax",
+                                study_name="tune_temp",
                                 load_if_exists=True)
     study.optimize(objective, n_trials=100)
     print(study.best_params)

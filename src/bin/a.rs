@@ -21,6 +21,7 @@ type Output = Vec<[Point; 4]>;
 // struct ArgParams {
 //     t0: f64,
 //     t1: f64,
+// tabu_tenure: usize,
 // }
 
 // impl ArgParams {
@@ -29,8 +30,9 @@ type Output = Vec<[Point; 4]>;
 //         args.next();
 //         let t0 = args.next().unwrap().parse::<f64>().unwrap();
 //         let t1 = args.next().unwrap().parse::<f64>().unwrap();
-//         ArgParams { dmax, t0, t1 }
-//     }
+// let tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
+// ArgParams { t0, t1 }
+// }
 // }
 
 fn main() {
@@ -79,6 +81,7 @@ fn annealing<T: Rng>(
 ) -> i64 {
     const T0: f64 = 7843.321346996101;
     const T1: f64 = 7609.796863214346;
+    const TABUTENURE: usize = 3;
     let mut temp = T0;
     // let mut temp = params.t0;
     let mut prob;
@@ -118,7 +121,7 @@ fn annealing<T: Rng>(
                 }
             }
         }
-        if tabu_list.len() > 3 {
+        if tabu_list.len() > TABUTENURE {
             tabu_list.pop_front();
         }
         let mut insertable = construct_insertable(input, &new_state, &tabu_list);
