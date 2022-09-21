@@ -79,8 +79,8 @@ fn annealing<T: Rng>(
     timer: Timer,
     // params: ArgParams,
 ) -> i64 {
-    const T0: f64 = 7843.321346996101;
-    const T1: f64 = 7609.796863214346;
+    const T0: f64 = 7843.321346;
+    const T1: f64 = 7609.796863;
     const TABUTENURE: usize = 3;
     let mut temp = T0;
     // let mut temp = params.t0;
