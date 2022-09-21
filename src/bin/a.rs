@@ -18,25 +18,23 @@ const DXY: [Point; 8] = [
 type Output = Vec<[Point; 4]>;
 
 // optunaで最適化する用
-struct ArgParams {
-    dmax: usize,
-    t0: f64,
-    t1: f64,
-}
+// struct ArgParams {
+//     t0: f64,
+//     t1: f64,
+// }
 
-impl ArgParams {
-    fn new() -> Self {
-        let mut args = std::env::args();
-        args.next();
-        let dmax = args.next().unwrap().parse::<usize>().unwrap();
-        let t0 = args.next().unwrap().parse::<f64>().unwrap();
-        let t1 = args.next().unwrap().parse::<f64>().unwrap();
-        ArgParams { dmax, t0, t1 }
-    }
-}
+// impl ArgParams {
+//     fn new() -> Self {
+//         let mut args = std::env::args();
+//         args.next();
+//         let t0 = args.next().unwrap().parse::<f64>().unwrap();
+//         let t1 = args.next().unwrap().parse::<f64>().unwrap();
+//         ArgParams { dmax, t0, t1 }
+//     }
+// }
 
 fn main() {
-    let params = ArgParams::new();
+    // let params = ArgParams::new();
     let timer = Timer::new();
     let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(0);
     let input = Input::new();
@@ -59,7 +57,7 @@ fn main() {
         &score_weight,
         &mut rng,
         timer,
-        params,
+        // params,
     );
     println!("{}", best_output.len());
     for out in best_output.iter() {
@@ -77,13 +75,12 @@ fn annealing<T: Rng>(
     score_weight: &ScoreWeight,
     rng: &mut T,
     timer: Timer,
-    params: ArgParams,
+    // params: ArgParams,
 ) -> i64 {
-    // const DMAX: usize = 8;
-    // const T0: f64 = 100.0;
-    // const T1: f64 = 0.001;
-    // let mut temp = T0;
-    let mut temp = params.t0;
+    const T0: f64 = 7843.321346996101;
+    const T1: f64 = 7609.796863214346;
+    let mut temp = T0;
+    // let mut temp = params.t0;
     let mut prob;
     let mut now_score = compute_score(input, out, score_weight);
 
@@ -96,8 +93,8 @@ fn annealing<T: Rng>(
             break;
         }
         if count > 100 {
-            // temp = T0.powf(1.0 - passed) * T1.powf(passed);
-            temp = params.t0.powf(1.0 - passed) * params.t1.powf(passed);
+            temp = T0.powf(1.0 - passed) * T1.powf(passed);
+            // temp = params.t0.powf(1.0 - passed) * params.t1.powf(passed);
             count = 0;
         }
         count += 1;
@@ -105,16 +102,11 @@ fn annealing<T: Rng>(
         let mut new_state = State::new(input);
         let mut new_out = vec![];
         // 近傍解作成
-        // randomにd個選んで削除
-        // let d = rng.gen_range(1, DMAX);
+        // randomに1個選んで削除
         if !out.is_empty() {
-            let d = rng.gen_range(1, params.dmax);
             let pos = rng.gen_range(0, out.len());
             for (i, &rect) in out.iter().enumerate() {
-                if pos <= i && i < pos + d {
-                    continue;
-                }
-                if out.len() <= pos + d && i < (pos + d) % out.len() {
+                if pos == i {
                     continue;
                 }
                 if new_state.check_move(&rect) {
