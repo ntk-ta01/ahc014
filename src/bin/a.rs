@@ -50,9 +50,20 @@ fn main() {
 
     let mut best_output = vec![];
     let mut best_score = 0;
+
+    let init_state = State::new(&input);
+    let init_tabu_list = VecDeque::new();
+    let init_insertable = construct_insertable(&input, &init_state, &init_tabu_list);
     while timer.get_time() < GREEDYTIMELIMIT {
         let mut output = vec![];
-        greedy(&input, &mut output, &mut rng);
+        greedy(
+            &input,
+            &mut output,
+            &mut rng,
+            init_state.clone(),
+            &init_tabu_list,
+            init_insertable.clone(),
+        );
         let score = compute_score(&input, &output, &score_weight);
         if best_score < score {
             best_output = output;
@@ -85,10 +96,10 @@ fn annealing<T: Rng>(
     timer: Timer,
     // params: ArgParams,
 ) -> i64 {
-    const T0: f64 = 7328.585995407348;
-    const T1: f64 = 5931.793005183142;
+    const T0: f64 = 7843.321346;
+    const T1: f64 = 7609.796863;
     const TABUTENURE: usize = 4;
-    const BACKTOBEST: usize = 5415;
+    const BACKTOBEST: usize = 16000;
     let back_to_best = BACKTOBEST / input.n;
     let mut temp = T0;
     // let mut temp = params.t0;
@@ -182,13 +193,17 @@ fn annealing<T: Rng>(
     best_score
 }
 
-fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T) {
+fn greedy<T: Rng>(
+    input: &Input,
+    out: &mut Output,
+    rng: &mut T,
+    mut state: State,
+    tabu_list: &VecDeque<Point>,
+    mut insertable: Vec<[Point; 4]>,
+) {
     // 始めにO(n^3)で印の打点候補を列挙する
     // 打点候補が空になるまで重みのroulette-wheel-selectionで打点
     // 印の打点候補の更新はO(n^2)
-    let mut state = State::new(input);
-    let tabu_list = VecDeque::new();
-    let mut insertable = construct_insertable(input, &state, &tabu_list);
     // insertableをsort
     insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
     while !insertable.is_empty() {
@@ -197,7 +212,7 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T) {
         state.apply_move(&rect);
         out.push(rect);
         // insertable = construct_insertable(input, &state);
-        update_insertable(input, &state, rect[0], &mut insertable, &tabu_list);
+        update_insertable(input, &state, rect[0], &mut insertable, tabu_list);
         insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
     }
 }
@@ -405,6 +420,7 @@ fn select_insertable<T: Rng>(input: &Input, rng: &mut T, insertable: &[[Point; 4
     unreachable!();
 }
 
+#[derive(Debug, Clone)]
 struct State {
     has_point: Vec<Vec<bool>>,
     used: Vec<Vec<[bool; 8]>>,
