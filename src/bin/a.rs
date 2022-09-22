@@ -18,22 +18,28 @@ const DXY: [Point; 8] = [
 type Output = Vec<[Point; 4]>;
 
 // optunaで最適化する用
-// struct ArgParams {
-//     t0: f64,
-//     t1: f64,
-// tabu_tenure: usize,
-// }
+#[allow(dead_code)]
+struct ArgParams {
+    t0: f64,
+    t1: f64,
+    back_to_best: usize,
+}
 
-// impl ArgParams {
-//     fn new() -> Self {
-//         let mut args = std::env::args();
-//         args.next();
-//         let t0 = args.next().unwrap().parse::<f64>().unwrap();
-//         let t1 = args.next().unwrap().parse::<f64>().unwrap();
-// let tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
-// ArgParams { t0, t1 }
-// }
-// }
+impl ArgParams {
+    #[allow(dead_code)]
+    fn new() -> Self {
+        let mut args = std::env::args();
+        args.next();
+        let t0 = args.next().unwrap().parse::<f64>().unwrap();
+        let t1 = args.next().unwrap().parse::<f64>().unwrap();
+        let back_to_best = args.next().unwrap().parse::<usize>().unwrap();
+        ArgParams {
+            t0,
+            t1,
+            back_to_best,
+        }
+    }
+}
 
 fn main() {
     // let params = ArgParams::new();
@@ -79,10 +85,10 @@ fn annealing<T: Rng>(
     timer: Timer,
     // params: ArgParams,
 ) -> i64 {
-    const T0: f64 = 7843.321346;
-    const T1: f64 = 7609.796863;
+    const T0: f64 = 7328.585995407348;
+    const T1: f64 = 5931.793005183142;
     const TABUTENURE: usize = 4;
-    const BACKTOBEST: usize = 16000;
+    const BACKTOBEST: usize = 5415;
     let back_to_best = BACKTOBEST / input.n;
     let mut temp = T0;
     // let mut temp = params.t0;
