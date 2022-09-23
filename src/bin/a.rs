@@ -77,6 +77,9 @@ fn main() {
         &mut rng,
         timer,
         // params,
+        init_state,
+        init_tabu_list,
+        init_insertable,
     );
     println!("{}", best_output.len());
     for out in best_output.iter() {
@@ -88,6 +91,7 @@ fn main() {
     eprintln!("score:{}", best_score);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn annealing<T: Rng>(
     input: &Input,
     out: &mut Output,
@@ -95,6 +99,9 @@ fn annealing<T: Rng>(
     rng: &mut T,
     timer: Timer,
     // params: ArgParams,
+    init_state: State,
+    mut tabu_list: VecDeque<Point>,
+    init_insertable: Vec<[Point; 4]>,
 ) -> i64 {
     const T0: f64 = 7843.321346;
     const T1: f64 = 7609.796863;
@@ -110,7 +117,7 @@ fn annealing<T: Rng>(
     let mut best_output = out.clone();
     let mut count = 0;
 
-    let mut tabu_list = VecDeque::new();
+    // let mut tabu_list = VecDeque::new();
     let mut no_improved = 0;
 
     // let mut appeared_map = HashMap::new();
@@ -126,7 +133,8 @@ fn annealing<T: Rng>(
         }
         count += 1;
 
-        let mut new_state = State::new(input);
+        let mut new_state = init_state.clone();
+        let mut new_insertable = init_insertable.clone();
         let mut new_out = vec![];
         // 近傍解作成
         // randomに1個選んで削除
@@ -140,22 +148,23 @@ fn annealing<T: Rng>(
                 if new_state.check_move(&rect) {
                     new_state.apply_move(&rect);
                     new_out.push(rect);
+                    update_insertable(input, &new_state, rect[0], &mut new_insertable, &tabu_list);
                 }
             }
-        }
-        if tabu_list.len() > TABUTENURE {
-            tabu_list.pop_front();
-        }
-        let mut insertable = construct_insertable(input, &new_state, &tabu_list);
-        // insertableをsort
-        insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
-        while !insertable.is_empty() {
-            let rect = select_insertable(input, rng, &insertable);
-            // let rect = insertable[0];
-            new_state.apply_move(&rect);
-            out.push(rect);
-            update_insertable(input, &new_state, rect[0], &mut insertable, &tabu_list);
-            insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+            // new_insertable = new_insertable
+            //     .into_iter()
+            //     .filter(|rect| tabu_list.iter().all(|p| *p != rect[0]))
+            //     .collect();
+            new_insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+            while !new_insertable.is_empty() {
+                let rect = select_insertable(input, rng, &new_insertable);
+                // let rect = insertable[0];
+                new_state.apply_move(&rect);
+                out.push(rect);
+                update_insertable(input, &new_state, rect[0], &mut new_insertable, &tabu_list);
+                new_insertable
+                    .sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+            }
         }
 
         // 近傍解作成ここまで
@@ -166,6 +175,11 @@ fn annealing<T: Rng>(
             // let e = appeared_map.entry(new_out.clone()).or_insert(0);
             // *e += 1;
             *out = new_out;
+            if tabu_list.len() > TABUTENURE {
+                tabu_list.pop_front();
+            }
+        } else {
+            tabu_list.pop_back();
         }
 
         if best_score < now_score {
@@ -259,14 +273,21 @@ fn construct_insertable(
                 if p1 == (!0, !0) {
                     continue;
                 }
-                for &p3 in even_points.iter().skip(i + 1) {
+                for &p3 in even_points.iter().skip(i + 1).step_by(2) {
                     if p3 == (!0, !0) {
                         continue;
                     }
                     let dx03 = p3.0 as i64 - p0.0 as i64;
                     let dy03 = p3.1 as i64 - p0.1 as i64;
+                    let dx01 = p1.0 as i64 - p0.0 as i64;
+                    let dy01 = p1.1 as i64 - p0.1 as i64;
                     let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
-                    let rect = [p0, p1, p2, p3];
+                    // p1, p0, p3が反時計回りに180度未満（つまり90度）
+                    let rect = if dx01 * dy03 - dy01 * dx03 > 0 {
+                        [p0, p1, p2, p3]
+                    } else {
+                        [p0, p3, p2, p1]
+                    };
                     if p2.0 < input.n && p2.1 < input.n && state.check_move(&rect) {
                         insertable.push(rect);
                     }
@@ -276,14 +297,21 @@ fn construct_insertable(
                 if p1 == (!0, !0) {
                     continue;
                 }
-                for &p3 in odd_points.iter().skip(i + 1) {
+                for &p3 in odd_points.iter().skip(i + 1).step_by(2) {
                     if p3 == (!0, !0) {
                         continue;
                     }
                     let dx03 = p3.0 as i64 - p0.0 as i64;
                     let dy03 = p3.1 as i64 - p0.1 as i64;
+                    let dx01 = p1.0 as i64 - p0.0 as i64;
+                    let dy01 = p1.1 as i64 - p0.1 as i64;
                     let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
-                    let rect = [p0, p1, p2, p3];
+                    // p1, p0, p3が反時計回りに180度未満（つまり90度）
+                    let rect = if dx01 * dy03 - dy01 * dx03 > 0 {
+                        [p0, p1, p2, p3]
+                    } else {
+                        [p0, p3, p2, p1]
+                    };
                     if p2.0 < input.n && p2.1 < input.n && state.check_move(&rect) {
                         insertable.push(rect);
                     }
@@ -344,18 +372,33 @@ fn update_insertable(
                 }
                 // p1 = pre_p0
                 // p2 = (pre_p0から {-2, +2}方向の点)
-                // p3を探す
+                // p3, p2を探す
                 let p1 = pre_p0;
                 let dir = i ^ 4;
-                for j in [8 - 2, 2].iter() {
+                for &j in [8 - 2, 2].iter() {
                     let search_dir = (dir + j) % 8;
-                    let p2 = near_points[search_dir];
-                    if p2 != (!0, !0) {
-                        let dx01 = p0.0 as i64 - p1.0 as i64;
-                        let dy01 = p0.1 as i64 - p1.1 as i64;
-                        let p3 = ((p2.0 as i64 + dx01) as usize, (p2.1 as i64 + dy01) as usize);
-                        let rect = [p0, p1, p2, p3];
-                        if p3.0 < input.n && p3.1 < input.n && state.check_move(&rect) {
+                    let (mut x2, mut y2) = p0;
+                    let (dx2, dy2) = DXY[search_dir];
+                    x2 += dx2;
+                    y2 += dy2;
+                    while x2 < input.n && y2 < input.n && !state.has_point[x2][y2] {
+                        x2 += dx2;
+                        y2 += dy2;
+                    }
+                    let p3 = (x2, y2);
+                    if p3.0 < input.n && p3.1 < input.n {
+                        let dx03 = p3.0 as i64 - p0.0 as i64;
+                        let dy03 = p3.1 as i64 - p0.1 as i64;
+                        let dx01 = p1.0 as i64 - p0.0 as i64;
+                        let dy01 = p1.1 as i64 - p0.1 as i64;
+                        let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
+                        // p1, p0, p3が反時計回りに180度未満（つまり90度）
+                        let rect = if dx01 * dy03 - dy01 * dx03 > 0 {
+                            [p0, p1, p2, p3]
+                        } else {
+                            [p0, p3, p2, p1]
+                        };
+                        if p2.0 < input.n && p2.1 < input.n && state.check_move(&rect) {
                             insertable.push(rect);
                         }
                     }
@@ -366,23 +409,30 @@ fn update_insertable(
         }
         {
             // pre_p0をp2とする方針
-            // (i+1) % 8方向にp0が存在するか調べる
-            // p1 = i方向の点
+            // pre_p0の(i+1) % 8方向にp0が存在するか調べる
+            // p1 = (i+2) % 8方向の点
             // p2 = pre_p0
-            // p3 = (i+2) % 8方向の点
-            let p1 = near_points[i];
+            // p3 = i方向の点
+            let p1 = near_points[(i + 2) % 8];
             let p2 = pre_p0;
-            let p3 = near_points[(i + 2) % 8];
+            let p3 = near_points[i];
             if p1 == (!0, !0) || p3 == (!0, !0) {
                 continue;
             }
             let dx21 = p1.0 as i64 - p2.0 as i64;
             let dy21 = p1.1 as i64 - p2.1 as i64;
+            let dx23 = p3.0 as i64 - p2.0 as i64;
+            let dy23 = p3.1 as i64 - p2.1 as i64;
             let p0 = ((p3.0 as i64 + dx21) as usize, (p3.1 as i64 + dy21) as usize);
             if tabu_list.iter().any(|p| *p == p0) {
                 continue;
             }
-            let rect = [p0, p1, p2, p3];
+            // p3, p2, p1が反時計回りに90度
+            let rect = if dx23 * dy21 - dy23 * dx21 > 0 {
+                [p0, p1, p2, p3]
+            } else {
+                [p0, p3, p2, p1]
+            };
             if p0.0 < input.n && p0.1 < input.n && state.check_move(&rect) {
                 insertable.push(rect);
             }
