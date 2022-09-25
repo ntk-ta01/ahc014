@@ -1,8 +1,8 @@
 use rand::prelude::*;
 use std::{cmp, collections::VecDeque};
 
-const GREEDYTIMELIMIT: f64 = 0.75;
-const TIMELIMIT: f64 = 4.975;
+const GREEDYTIMELIMIT: f64 = 0.5;
+const TIMELIMIT: f64 = 4.75;
 
 const DXY: [Point; 8] = [
     (1, 0),
