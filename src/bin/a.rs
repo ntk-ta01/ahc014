@@ -1,5 +1,5 @@
 use rand::prelude::*;
-use std::{cmp, collections::VecDeque};
+use std::{cmp, collections::VecDeque, vec};
 
 const GREEDYTIMELIMIT: f64 = 0.5;
 const TIMELIMIT: f64 = 4.75;
@@ -91,7 +91,7 @@ fn annealing<T: Rng>(
     rng: &mut T,
     timer: Timer,
     // params: ArgParams,
-    init_insertable: Vec<[Point; 4]>,
+    _init_insertable: Vec<[Point; 4]>,
 ) -> i64 {
     const T0: f64 = 7843.321346;
     const T1: f64 = 7609.796863;
@@ -110,6 +110,35 @@ fn annealing<T: Rng>(
     let mut tabu_list = VecDeque::new();
     let mut no_improved = 0;
 
+    let mut near_point = {
+        let mut ret = vec![vec![[(!0, !0); 8]; input.n]; input.n];
+        let mut state = State::new(input);
+        for rect in out.iter() {
+            state.apply_move(rect);
+        }
+        for i in 0..input.n {
+            for j in 0..input.n {
+                if !state.has_point[i][j] {
+                    continue;
+                }
+                // (i,j)の8方向のnear_pointを列挙
+                for (d, &(dx, dy)) in DXY.iter().enumerate() {
+                    let (mut x, mut y) = (i, j);
+                    x += dx;
+                    y += dy;
+                    while x < input.n && y < input.n && !state.has_point[x][y] {
+                        x += dx;
+                        y += dy;
+                    }
+                    if x < input.n && y < input.n {
+                        ret[i][j][d] = (x, y);
+                    }
+                }
+            }
+        }
+        ret
+    };
+
     // let mut appeared_map = HashMap::new();
     loop {
         let passed = timer.get_time() / TIMELIMIT;
@@ -124,12 +153,13 @@ fn annealing<T: Rng>(
         count += 1;
 
         let mut new_state = State::new(input);
-        let mut new_insertable = init_insertable.clone();
         let mut new_out = vec![];
         // 近傍解作成
         // randomに1個選んで削除
+        let pos = rng.gen_range(0, out.len());
+        let remove_point = out[pos][0];
+        let remove_near_point = near_point[remove_point.0][remove_point.1];
         if !out.is_empty() {
-            let pos = rng.gen_range(0, out.len());
             for (i, &rect) in out.iter().enumerate() {
                 if pos == i {
                     tabu_list.push_back(rect[0]);
@@ -138,24 +168,59 @@ fn annealing<T: Rng>(
                 if new_state.check_move(&rect) {
                     new_state.apply_move(&rect);
                     new_out.push(rect);
-                    update_insertable(input, &new_state, rect[0], &mut new_insertable);
                 }
             }
+            // out[pos][0]を消したとき、near_pointを差分更新する
+            for d in 0..DXY.len() / 2 {
+                let point_d = near_point[remove_point.0][remove_point.1][d];
+                let point_d4 = near_point[remove_point.0][remove_point.1][d ^ 4];
+                if point_d != (!0, !0) {
+                    near_point[point_d.0][point_d.1][d ^ 4] = point_d4;
+                }
+                if point_d4 != (!0, !0) {
+                    near_point[point_d4.0][point_d4.1][d] = point_d;
+                }
+                near_point[remove_point.0][remove_point.1][d] = (!0, !0);
+                near_point[remove_point.0][remove_point.1][d ^ 4] = (!0, !0);
+            }
+            // 解を更新しなかったら戻す
+            // near_point[remove_point.0][remove_point.1] = remove_near_point すればよい
         }
         if tabu_list.len() > TABUTENURE {
             tabu_list.pop_front();
         }
+        let mut new_insertable = construct_insertable2(input, &new_state, &near_point);
         new_insertable = new_insertable
             .into_iter()
             .filter(|rect| tabu_list.iter().all(|p| *p != rect[0]))
             .collect();
         new_insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+        let mut insert_points = vec![]; // 解が更新されなかったらこれらの点に関するnear_pointを削除する
         while !new_insertable.is_empty() {
             let rect = select_insertable(input, rng, &new_insertable);
             // let rect = insertable[0];
+            // 点を打ったらnear_pointを更新する
+            for (d, &(dx, dy)) in DXY.iter().enumerate() {
+                let (mut x, mut y) = (rect[0].0, rect[0].1);
+                x += dx;
+                y += dy;
+                while x < input.n && y < input.n && !new_state.has_point[x][y] {
+                    x += dx;
+                    y += dy;
+                }
+                if x < input.n && y < input.n {
+                    near_point[rect[0].0][rect[0].1][d] = (x, y);
+                    near_point[x][y][d ^ 4] = rect[0];
+                }
+            }
             new_state.apply_move(&rect);
             out.push(rect);
-            update_insertable(input, &new_state, rect[0], &mut new_insertable);
+            insert_points.push(rect[0]);
+            new_insertable = construct_insertable2(input, &new_state, &near_point);
+            new_insertable = new_insertable
+                .into_iter()
+                .filter(|rect| tabu_list.iter().all(|p| *p != rect[0]))
+                .collect();
             new_insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
         }
 
@@ -167,6 +232,22 @@ fn annealing<T: Rng>(
             // let e = appeared_map.entry(new_out.clone()).or_insert(0);
             // *e += 1;
             *out = new_out;
+        } else {
+            near_point[remove_point.0][remove_point.1] = remove_near_point;
+            for remove_point in insert_points {
+                for d in 0..DXY.len() / 2 {
+                    let point_d = near_point[remove_point.0][remove_point.1][d];
+                    let point_d4 = near_point[remove_point.0][remove_point.1][d ^ 4];
+                    if point_d != (!0, !0) {
+                        near_point[point_d.0][point_d.1][d ^ 4] = point_d4;
+                    }
+                    if point_d4 != (!0, !0) {
+                        near_point[point_d4.0][point_d4.1][d] = point_d;
+                    }
+                    near_point[remove_point.0][remove_point.1][d] = (!0, !0);
+                    near_point[remove_point.0][remove_point.1][d ^ 4] = (!0, !0);
+                }
+            }
         }
 
         if best_score < now_score {
@@ -210,6 +291,35 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T, mut insertable: 
         update_insertable(input, &state, rect[0], &mut insertable);
         insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
     }
+}
+
+fn construct_insertable2(
+    input: &Input,
+    state: &State,
+    near_point: &[Vec<[Point; 8]>],
+) -> Vec<[Point; 4]> {
+    let mut insertable = vec![];
+    for (i, row) in state.has_point.iter().enumerate() {
+        for (j, _) in row.iter().enumerate().filter(|(_, has)| **has) {
+            // (i, j)をp2として、4+4通りp0として打てる点があるか調べる
+            let p2 = (i, j);
+            for d in 0..DXY.len() {
+                let p1 = near_point[p2.0][p2.1][d];
+                let p3 = near_point[p2.0][p2.1][(d + 2) % 8];
+                if p1 == (!0, !0) || p3 == (!0, !0) {
+                    continue;
+                }
+                let dx21 = p1.0 as i64 - p2.0 as i64;
+                let dy21 = p1.1 as i64 - p2.1 as i64;
+                let p0 = ((p3.0 as i64 + dx21) as usize, (p3.1 as i64 + dy21) as usize);
+                let rect = [p0, p1, p2, p3];
+                if p0.0 < input.n && p0.1 < input.n && state.check_move(&rect) {
+                    insertable.push(rect);
+                }
+            }
+        }
+    }
+    insertable
 }
 
 fn construct_insertable(input: &Input, state: &State) -> Vec<[Point; 4]> {
