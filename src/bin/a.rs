@@ -96,8 +96,8 @@ fn annealing<T: Rng>(
     const T0: f64 = 7843.321346;
     const T1: f64 = 7609.796863;
     const TABUTENURE: usize = 4;
-    const BACKTOBEST: usize = 16000;
-    let back_to_best = BACKTOBEST / input.n;
+    // const BACKTOBEST: usize = 16000;
+    // let back_to_best = BACKTOBEST / input.n;
     let mut temp = T0;
     // let mut temp = params.t0;
     let mut prob;
@@ -108,7 +108,7 @@ fn annealing<T: Rng>(
     let mut count = 0;
 
     let mut tabu_list = VecDeque::new();
-    let mut no_improved = 0;
+    // let mut no_improved = 0;
 
     // let mut appeared_map = HashMap::new();
     loop {
@@ -172,18 +172,19 @@ fn annealing<T: Rng>(
         if best_score < now_score {
             // eprintln!("time: {}", timer.get_time());
             // eprintln!("no improved: {} / passed: {:.3}", no_improved, passed);
-            no_improved = 0;
+            // no_improved = 0;
             best_score = now_score;
             best_output = out.clone();
-        } else {
-            no_improved += 1;
         }
+        // else {
+        // no_improved += 1;
+        // }
 
-        if back_to_best < no_improved {
-            now_score = best_score;
-            *out = best_output.clone();
-            no_improved = 0;
-        }
+        // if back_to_best < no_improved {
+        //     now_score = best_score;
+        //     *out = best_output.clone();
+        //     no_improved = 0;
+        // }
     }
     // eprintln!("no improved: {}", no_improved);
     // eprintln!(
