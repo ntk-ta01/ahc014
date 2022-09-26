@@ -94,7 +94,7 @@ fn annealing<T: Rng>(
     init_insertable: Vec<[Point; 4]>,
 ) -> i64 {
     const T0: f64 = 7843.321346;
-    const T1: f64 = 7609.796863;
+    const T1: f64 = 7839.796863;
     const TABUTENURE: usize = 4;
     // const BACKTOBEST: usize = 16000;
     // let back_to_best = BACKTOBEST / input.n;
