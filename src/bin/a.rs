@@ -93,7 +93,7 @@ fn annealing<T: Rng>(
     let mut best_output = out.clone();
     let mut count = 0;
 
-    let mut tabu_list = VecDeque::new();
+    let mut insert_tabu_list = VecDeque::new();
     let mut no_improved = 0;
     loop {
         let passed = timer.get_time() / TIMELIMIT;
@@ -115,7 +115,7 @@ fn annealing<T: Rng>(
             let pos = rng.gen_range(0, out.len());
             for (i, &rect) in out.iter().enumerate() {
                 if pos == i {
-                    tabu_list.push_back(rect[0]);
+                    insert_tabu_list.push_back(rect[0]);
                     continue;
                 }
                 if new_state.check_move(&rect) {
@@ -124,10 +124,10 @@ fn annealing<T: Rng>(
                 }
             }
         }
-        if tabu_list.len() > TABUTENURE {
-            tabu_list.pop_front();
+        if insert_tabu_list.len() > TABUTENURE {
+            insert_tabu_list.pop_front();
         }
-        let mut insertable = construct_insertable(input, &new_state, &tabu_list);
+        let mut insertable = construct_insertable(input, &new_state, &insert_tabu_list);
         // insertableをsort
         insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
         while !insertable.is_empty() {
@@ -135,7 +135,13 @@ fn annealing<T: Rng>(
             // let rect = insertable[0];
             new_state.apply_move(&rect);
             out.push(rect);
-            update_insertable(input, &new_state, rect[0], &mut insertable, &tabu_list);
+            update_insertable(
+                input,
+                &new_state,
+                rect[0],
+                &mut insertable,
+                &insert_tabu_list,
+            );
             insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
         }
 
@@ -173,8 +179,8 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T) {
     // 打点候補が空になるまで重みのroulette-wheel-selectionで打点
     // 印の打点候補の更新はO(n^2)
     let mut state = State::new(input);
-    let tabu_list = VecDeque::new();
-    let mut insertable = construct_insertable(input, &state, &tabu_list);
+    let insert_tabu_list = VecDeque::new();
+    let mut insertable = construct_insertable(input, &state, &insert_tabu_list);
     // insertableをsort
     insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
     while !insertable.is_empty() {
@@ -183,7 +189,7 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T) {
         state.apply_move(&rect);
         out.push(rect);
         // insertable = construct_insertable(input, &state);
-        update_insertable(input, &state, rect[0], &mut insertable, &tabu_list);
+        update_insertable(input, &state, rect[0], &mut insertable, &insert_tabu_list);
         insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
     }
 }
@@ -191,13 +197,13 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T) {
 fn construct_insertable(
     input: &Input,
     state: &State,
-    tabu_list: &VecDeque<Point>,
+    insert_tabu_list: &VecDeque<Point>,
 ) -> Vec<[Point; 4]> {
     let mut insertable = vec![];
     for (i, row) in state.has_point.iter().enumerate() {
         for (j, _) in row.iter().enumerate().filter(|(_, has)| !*has) {
             let p0 = (i, j);
-            if tabu_list.iter().any(|p| *p == p0) {
+            if insert_tabu_list.iter().any(|p| *p == p0) {
                 continue;
             }
             // p0に対してp1, p2, p3を探す
@@ -270,7 +276,7 @@ fn update_insertable(
     state: &State,
     pre_p0: Point,
     insertable: &mut Vec<[Point; 4]>,
-    tabu_list: &VecDeque<Point>,
+    insert_tabu_list: &VecDeque<Point>,
 ) {
     // 打点によって更新されたstateに合わせてinsertableの各要素をfilter
     *insertable = insertable
@@ -308,7 +314,7 @@ fn update_insertable(
             while x < input.n && y < input.n && !state.has_point[x][y] {
                 // p0はこれから印を打ちたい点
                 let p0 = (x, y);
-                if tabu_list.iter().any(|p| *p == p0) {
+                if insert_tabu_list.iter().any(|p| *p == p0) {
                     x += dx;
                     y += dy;
                     continue;
@@ -350,7 +356,7 @@ fn update_insertable(
             let dx21 = p1.0 as i64 - p2.0 as i64;
             let dy21 = p1.1 as i64 - p2.1 as i64;
             let p0 = ((p3.0 as i64 + dx21) as usize, (p3.1 as i64 + dy21) as usize);
-            if tabu_list.iter().any(|p| *p == p0) {
+            if insert_tabu_list.iter().any(|p| *p == p0) {
                 continue;
             }
             let rect = [p0, p1, p2, p3];
