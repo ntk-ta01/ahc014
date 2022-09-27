@@ -2,7 +2,7 @@ use rand::prelude::*;
 use std::{cmp, collections::VecDeque};
 
 const GREEDYTIMELIMIT: f64 = 0.5;
-const TIMELIMIT: f64 = 4.75;
+const TIMELIMIT: f64 = 4.95;
 
 const DXY: [Point; 8] = [
     (1, 0),
@@ -18,28 +18,22 @@ const DXY: [Point; 8] = [
 type Output = Vec<[Point; 4]>;
 
 // optunaで最適化する用
-#[allow(dead_code)]
-struct ArgParams {
-    t0: f64,
-    t1: f64,
-    back_to_best: usize,
-}
+// struct ArgParams {
+//     t0: f64,
+//     t1: f64,
+// tabu_tenure: usize,
+// }
 
-impl ArgParams {
-    #[allow(dead_code)]
-    fn new() -> Self {
-        let mut args = std::env::args();
-        args.next();
-        let t0 = args.next().unwrap().parse::<f64>().unwrap();
-        let t1 = args.next().unwrap().parse::<f64>().unwrap();
-        let back_to_best = args.next().unwrap().parse::<usize>().unwrap();
-        ArgParams {
-            t0,
-            t1,
-            back_to_best,
-        }
-    }
-}
+// impl ArgParams {
+//     fn new() -> Self {
+//         let mut args = std::env::args();
+//         args.next();
+//         let t0 = args.next().unwrap().parse::<f64>().unwrap();
+//         let t1 = args.next().unwrap().parse::<f64>().unwrap();
+// let tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
+// ArgParams { t0, t1 }
+// }
+// }
 
 fn main() {
     // let params = ArgParams::new();
@@ -50,14 +44,9 @@ fn main() {
 
     let mut best_output = vec![];
     let mut best_score = 0;
-
-    let init_insertable = {
-        let state = State::new(&input);
-        construct_insertable(&input, &state)
-    };
     while timer.get_time() < GREEDYTIMELIMIT {
         let mut output = vec![];
-        greedy(&input, &mut output, &mut rng, init_insertable.clone());
+        greedy(&input, &mut output, &mut rng);
         let score = compute_score(&input, &output, &score_weight);
         if best_score < score {
             best_output = output;
@@ -71,7 +60,6 @@ fn main() {
         &mut rng,
         timer,
         // params,
-        init_insertable,
     );
     println!("{}", best_output.len());
     for out in best_output.iter() {
@@ -83,7 +71,6 @@ fn main() {
     eprintln!("score:{}", best_score);
 }
 
-#[allow(clippy::too_many_arguments)]
 fn annealing<T: Rng>(
     input: &Input,
     out: &mut Output,
@@ -91,13 +78,12 @@ fn annealing<T: Rng>(
     rng: &mut T,
     timer: Timer,
     // params: ArgParams,
-    init_insertable: Vec<[Point; 4]>,
 ) -> i64 {
     const T0: f64 = 7843.321346;
-    const T1: f64 = 7839.796863;
+    const T1: f64 = 7609.796863;
     const TABUTENURE: usize = 4;
-    // const BACKTOBEST: usize = 16000;
-    // let back_to_best = BACKTOBEST / input.n;
+    const BACKTOBEST: usize = 16000;
+    let back_to_best = BACKTOBEST / input.n;
     let mut temp = T0;
     // let mut temp = params.t0;
     let mut prob;
@@ -108,9 +94,7 @@ fn annealing<T: Rng>(
     let mut count = 0;
 
     let mut tabu_list = VecDeque::new();
-    // let mut no_improved = 0;
-
-    // let mut appeared_map = HashMap::new();
+    let mut no_improved = 0;
     loop {
         let passed = timer.get_time() / TIMELIMIT;
         if passed >= 1.0 {
@@ -124,7 +108,6 @@ fn annealing<T: Rng>(
         count += 1;
 
         let mut new_state = State::new(input);
-        let mut new_insertable = init_insertable.clone();
         let mut new_out = vec![];
         // 近傍解作成
         // randomに1個選んで削除
@@ -138,25 +121,22 @@ fn annealing<T: Rng>(
                 if new_state.check_move(&rect) {
                     new_state.apply_move(&rect);
                     new_out.push(rect);
-                    update_insertable(input, &new_state, rect[0], &mut new_insertable);
                 }
             }
         }
         if tabu_list.len() > TABUTENURE {
             tabu_list.pop_front();
         }
-        new_insertable = new_insertable
-            .into_iter()
-            .filter(|rect| tabu_list.iter().all(|p| *p != rect[0]))
-            .collect();
-        new_insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
-        while !new_insertable.is_empty() {
-            let rect = select_insertable(input, rng, &new_insertable);
+        let mut insertable = construct_insertable(input, &new_state, &tabu_list);
+        // insertableをsort
+        insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+        while !insertable.is_empty() {
+            let rect = select_insertable(input, rng, &insertable);
             // let rect = insertable[0];
             new_state.apply_move(&rect);
             out.push(rect);
-            update_insertable(input, &new_state, rect[0], &mut new_insertable);
-            new_insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+            update_insertable(input, &new_state, rect[0], &mut insertable, &tabu_list);
+            insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
         }
 
         // 近傍解作成ここまで
@@ -164,43 +144,38 @@ fn annealing<T: Rng>(
         prob = f64::exp((new_score - now_score) as f64 / temp);
         if now_score < new_score || rng.gen_bool(prob) {
             now_score = new_score;
-            // let e = appeared_map.entry(new_out.clone()).or_insert(0);
-            // *e += 1;
             *out = new_out;
         }
 
         if best_score < now_score {
             // eprintln!("time: {}", timer.get_time());
             // eprintln!("no improved: {} / passed: {:.3}", no_improved, passed);
-            // no_improved = 0;
+            no_improved = 0;
             best_score = now_score;
             best_output = out.clone();
+        } else {
+            no_improved += 1;
         }
-        // else {
-        // no_improved += 1;
-        // }
 
-        // if back_to_best < no_improved {
-        //     now_score = best_score;
-        //     *out = best_output.clone();
-        //     no_improved = 0;
-        // }
+        if back_to_best < no_improved {
+            now_score = best_score;
+            *out = best_output.clone();
+            no_improved = 0;
+        }
     }
     // eprintln!("no improved: {}", no_improved);
-    // eprintln!(
-    //     "cycleing time: {}",
-    //     appeared_map.iter().filter(|(_, v)| 1 < **v).count()
-    // );
     *out = best_output;
     best_score
 }
 
-fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T, mut insertable: Vec<[Point; 4]>) {
+fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T) {
     // 始めにO(n^3)で印の打点候補を列挙する
     // 打点候補が空になるまで重みのroulette-wheel-selectionで打点
     // 印の打点候補の更新はO(n^2)
-    // insertableをsort
     let mut state = State::new(input);
+    let tabu_list = VecDeque::new();
+    let mut insertable = construct_insertable(input, &state, &tabu_list);
+    // insertableをsort
     insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
     while !insertable.is_empty() {
         let rect = select_insertable(input, rng, &insertable);
@@ -208,19 +183,23 @@ fn greedy<T: Rng>(input: &Input, out: &mut Output, rng: &mut T, mut insertable: 
         state.apply_move(&rect);
         out.push(rect);
         // insertable = construct_insertable(input, &state);
-        update_insertable(input, &state, rect[0], &mut insertable);
+        update_insertable(input, &state, rect[0], &mut insertable, &tabu_list);
         insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
     }
 }
 
-fn construct_insertable(input: &Input, state: &State) -> Vec<[Point; 4]> {
+fn construct_insertable(
+    input: &Input,
+    state: &State,
+    tabu_list: &VecDeque<Point>,
+) -> Vec<[Point; 4]> {
     let mut insertable = vec![];
     for (i, row) in state.has_point.iter().enumerate() {
         for (j, _) in row.iter().enumerate().filter(|(_, has)| !*has) {
             let p0 = (i, j);
-            // if tabu_list.iter().any(|p| *p == p0) {
-            //     continue;
-            // }
+            if tabu_list.iter().any(|p| *p == p0) {
+                continue;
+            }
             // p0に対してp1, p2, p3を探す
             // p0の周り8点を列挙して、4C2ずつrect[2]が打点可能でcheck_moveを通るかチェック
             let mut even_points = vec![];
@@ -257,15 +236,7 @@ fn construct_insertable(input: &Input, state: &State) -> Vec<[Point; 4]> {
                     }
                     let dx03 = p3.0 as i64 - p0.0 as i64;
                     let dy03 = p3.1 as i64 - p0.1 as i64;
-                    // let dx01 = p1.0 as i64 - p0.0 as i64;
-                    // let dy01 = p1.1 as i64 - p0.1 as i64;
                     let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
-                    // p1, p0, p3が反時計回りに180度未満（つまり90度）
-                    // let rect = if dx01 * dy03 - dy01 * dx03 > 0 {
-                    //     [p0, p1, p2, p3]
-                    // } else {
-                    //     [p0, p3, p2, p1]
-                    // };
                     let rect = [p0, p1, p2, p3];
                     if p2.0 < input.n && p2.1 < input.n && state.check_move(&rect) {
                         insertable.push(rect);
@@ -282,15 +253,7 @@ fn construct_insertable(input: &Input, state: &State) -> Vec<[Point; 4]> {
                     }
                     let dx03 = p3.0 as i64 - p0.0 as i64;
                     let dy03 = p3.1 as i64 - p0.1 as i64;
-                    // let dx01 = p1.0 as i64 - p0.0 as i64;
-                    // let dy01 = p1.1 as i64 - p0.1 as i64;
                     let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
-                    // p1, p0, p3が反時計回りに180度未満（つまり90度）
-                    // let rect = if dx01 * dy03 - dy01 * dx03 > 0 {
-                    //     [p0, p1, p2, p3]
-                    // } else {
-                    //     [p0, p3, p2, p1]
-                    // };
                     let rect = [p0, p1, p2, p3];
                     if p2.0 < input.n && p2.1 < input.n && state.check_move(&rect) {
                         insertable.push(rect);
@@ -307,6 +270,7 @@ fn update_insertable(
     state: &State,
     pre_p0: Point,
     insertable: &mut Vec<[Point; 4]>,
+    tabu_list: &VecDeque<Point>,
 ) {
     // 打点によって更新されたstateに合わせてinsertableの各要素をfilter
     *insertable = insertable
@@ -344,41 +308,25 @@ fn update_insertable(
             while x < input.n && y < input.n && !state.has_point[x][y] {
                 // p0はこれから印を打ちたい点
                 let p0 = (x, y);
-                // if tabu_list.iter().any(|p| *p == p0) {
-                //     x += dx;
-                //     y += dy;
-                //     continue;
-                // }
+                if tabu_list.iter().any(|p| *p == p0) {
+                    x += dx;
+                    y += dy;
+                    continue;
+                }
                 // p1 = pre_p0
                 // p2 = (pre_p0から {-2, +2}方向の点)
-                // p3, p2を探す
+                // p3を探す
                 let p1 = pre_p0;
                 let dir = i ^ 4;
-                for &j in [8 - 2, 2].iter() {
+                for j in [8 - 2, 2].iter() {
                     let search_dir = (dir + j) % 8;
-                    let (mut x2, mut y2) = p0;
-                    let (dx2, dy2) = DXY[search_dir];
-                    x2 += dx2;
-                    y2 += dy2;
-                    while x2 < input.n && y2 < input.n && !state.has_point[x2][y2] {
-                        x2 += dx2;
-                        y2 += dy2;
-                    }
-                    let p3 = (x2, y2);
-                    if p3.0 < input.n && p3.1 < input.n {
-                        let dx03 = p3.0 as i64 - p0.0 as i64;
-                        let dy03 = p3.1 as i64 - p0.1 as i64;
-                        // let dx01 = p1.0 as i64 - p0.0 as i64;
-                        // let dy01 = p1.1 as i64 - p0.1 as i64;
-                        let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
-                        // p1, p0, p3が反時計回りに180度未満（つまり90度）
-                        // let rect = if dx01 * dy03 - dy01 * dx03 > 0 {
-                        //     [p0, p1, p2, p3]
-                        // } else {
-                        //     [p0, p3, p2, p1]
-                        // };
+                    let p2 = near_points[search_dir];
+                    if p2 != (!0, !0) {
+                        let dx10 = p0.0 as i64 - p1.0 as i64;
+                        let dy10 = p0.1 as i64 - p1.1 as i64;
+                        let p3 = ((p2.0 as i64 + dx10) as usize, (p2.1 as i64 + dy10) as usize);
                         let rect = [p0, p1, p2, p3];
-                        if p2.0 < input.n && p2.1 < input.n && state.check_move(&rect) {
+                        if p3.0 < input.n && p3.1 < input.n && state.check_move(&rect) {
                             insertable.push(rect);
                         }
                     }
@@ -389,30 +337,22 @@ fn update_insertable(
         }
         {
             // pre_p0をp2とする方針
-            // pre_p0の(i+1) % 8方向にp0が存在するか調べる
-            // p1 = (i+2) % 8方向の点
+            // (i+1) % 8方向にp0が存在するか調べる
+            // p1 = i方向の点
             // p2 = pre_p0
-            // p3 = i方向の点
-            let p1 = near_points[(i + 2) % 8];
+            // p3 = (i+2) % 8方向の点
+            let p1 = near_points[i];
             let p2 = pre_p0;
-            let p3 = near_points[i];
+            let p3 = near_points[(i + 2) % 8];
             if p1 == (!0, !0) || p3 == (!0, !0) {
                 continue;
             }
             let dx21 = p1.0 as i64 - p2.0 as i64;
             let dy21 = p1.1 as i64 - p2.1 as i64;
-            // let dx23 = p3.0 as i64 - p2.0 as i64;
-            // let dy23 = p3.1 as i64 - p2.1 as i64;
             let p0 = ((p3.0 as i64 + dx21) as usize, (p3.1 as i64 + dy21) as usize);
-            // if tabu_list.iter().any(|p| *p == p0) {
-            //     continue;
-            // }
-            // p3, p2, p1が反時計回りに90度
-            // let rect = if dx23 * dy21 - dy23 * dx21 > 0 {
-            //     [p0, p1, p2, p3]
-            // } else {
-            //     [p0, p3, p2, p1]
-            // };
+            if tabu_list.iter().any(|p| *p == p0) {
+                continue;
+            }
             let rect = [p0, p1, p2, p3];
             if p0.0 < input.n && p0.1 < input.n && state.check_move(&rect) {
                 insertable.push(rect);
@@ -451,7 +391,6 @@ fn select_insertable<T: Rng>(input: &Input, rng: &mut T, insertable: &[[Point; 4
     unreachable!();
 }
 
-#[derive(Debug, Clone)]
 struct State {
     has_point: Vec<Vec<bool>>,
     used: Vec<Vec<[bool; 8]>>,
