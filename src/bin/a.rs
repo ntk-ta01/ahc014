@@ -145,14 +145,38 @@ fn annealing<T: Rng>(
         // 近傍解作成
         // randomに1個選んで削除
         if !out.is_empty() {
-            for (i, &rect) in out.iter().enumerate() {
-                if pos == i {
-                    insert_tabu_list.push_back(rect[0]);
-                    continue;
+            if rng.gen_bool(0.75) {
+                // 削除近傍
+                for (i, &rect) in out.iter().enumerate() {
+                    if pos == i {
+                        insert_tabu_list.push_back(rect[0]);
+                        continue;
+                    }
+                    if new_state.check_move(&rect) {
+                        new_state.apply_move(&rect);
+                        new_out.push(rect);
+                    }
                 }
-                if new_state.check_move(&rect) {
-                    new_state.apply_move(&rect);
-                    new_out.push(rect);
+            } else {
+                // 長方形変形近傍（変形できなければ削除）
+                for (i, &rect) in out.iter().enumerate() {
+                    if pos == i {
+                        // 長方形変形
+                        let mut modify_rects = construct_modify_rects(input, &new_state, &rect);
+                        modify_rects.sort_by_key(|rect| {
+                            (area(rect), cmp::Reverse(weight(rect[0], input.n)))
+                        });
+                        if !modify_rects.is_empty() {
+                            let mod_rect = select_insertable(input, rng, &modify_rects);
+                            new_state.apply_move(&mod_rect);
+                            new_out.push(mod_rect);
+                        }
+                        continue;
+                    }
+                    if new_state.check_move(&rect) {
+                        new_state.apply_move(&rect);
+                        new_out.push(rect);
+                    }
                 }
             }
         }
@@ -312,6 +336,78 @@ fn construct_insertable(
                         insertable.push(rect);
                     }
                 }
+            }
+        }
+    }
+    insertable
+}
+
+fn construct_modify_rects(
+    input: &Input,
+    state: &State,
+    original_rect: &[Point; 4],
+) -> Vec<[Point; 4]> {
+    let p0 = original_rect[0];
+    let mut insertable = vec![];
+    // p0に対してp1, p2, p3を探す
+    // p0の周り8点を列挙して、4C2ずつrect[2]が打点可能でcheck_moveを通るかチェック
+    let mut even_points = vec![];
+    let mut odd_points = vec![];
+    'construct_p0: for (i, &(dx, dy)) in DXY.iter().enumerate() {
+        let (mut x, mut y) = p0;
+        x += dx;
+        y += dy;
+        while x < input.n && y < input.n {
+            if state.has_point[x][y] {
+                if i % 2 == 0 {
+                    even_points.push((x, y));
+                } else {
+                    odd_points.push((x, y));
+                }
+                continue 'construct_p0;
+            }
+            x += dx;
+            y += dy;
+        }
+        if i % 2 == 0 {
+            even_points.push((!0, !0));
+        } else {
+            odd_points.push((!0, !0));
+        }
+    }
+    for (i, &p1) in even_points.iter().enumerate() {
+        if p1 == (!0, !0) {
+            continue;
+        }
+        for &p3 in even_points.iter().skip(i + 1).step_by(2) {
+            if p3 == (!0, !0) {
+                continue;
+            }
+            let dx03 = p3.0 as i64 - p0.0 as i64;
+            let dy03 = p3.1 as i64 - p0.1 as i64;
+            let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
+            let rect = [p0, p1, p2, p3];
+            if p2.0 < input.n && p2.1 < input.n && rect != *original_rect && state.check_move(&rect)
+            {
+                insertable.push(rect);
+            }
+        }
+    }
+    for (i, &p1) in odd_points.iter().enumerate() {
+        if p1 == (!0, !0) {
+            continue;
+        }
+        for &p3 in odd_points.iter().skip(i + 1).step_by(2) {
+            if p3 == (!0, !0) {
+                continue;
+            }
+            let dx03 = p3.0 as i64 - p0.0 as i64;
+            let dy03 = p3.1 as i64 - p0.1 as i64;
+            let p2 = ((p1.0 as i64 + dx03) as usize, (p1.1 as i64 + dy03) as usize);
+            let rect = [p0, p1, p2, p3];
+            if p2.0 < input.n && p2.1 < input.n && rect != *original_rect && state.check_move(&rect)
+            {
+                insertable.push(rect);
             }
         }
     }
