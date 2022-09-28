@@ -21,22 +21,22 @@ const DXY: [Point; 8] = [
 type Output = Vec<[Point; 4]>;
 
 // optunaで最適化する用
-// struct ArgParams {
-//     t0: f64,
-//     t1: f64,
-// tabu_tenure: usize,
-// }
+#[allow(dead_code)]
+struct ArgParams {
+    tabu_tenure: usize,
+    ratio: f64,
+}
 
-// impl ArgParams {
-//     fn new() -> Self {
-//         let mut args = std::env::args();
-//         args.next();
-//         let t0 = args.next().unwrap().parse::<f64>().unwrap();
-//         let t1 = args.next().unwrap().parse::<f64>().unwrap();
-// let tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
-// ArgParams { t0, t1 }
-// }
-// }
+impl ArgParams {
+    #[allow(dead_code)]
+    fn new() -> Self {
+        let mut args = std::env::args();
+        args.next();
+        let tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
+        let ratio = args.next().unwrap().parse::<f64>().unwrap();
+        ArgParams { tabu_tenure, ratio }
+    }
+}
 
 fn main() {
     // let params = ArgParams::new();
@@ -85,7 +85,7 @@ fn annealing<T: Rng>(
     const T0: f64 = 7843.321346;
     const T1: f64 = 7609.796863;
     const INSERTTABUTENURE: usize = 4;
-    const REMOVETABUTENURE: usize = 40;
+    const REMOVETABUTENURE: usize = 154;
     const BACKTOBEST: usize = 16000;
     let back_to_best = BACKTOBEST / input.n;
     let mut temp = T0;
@@ -102,7 +102,7 @@ fn annealing<T: Rng>(
 
     let mut insert_long_memory = BTreeMap::new();
     let mut max_inserted_time = 0;
-    const FIXRATIO: f64 = 0.20;
+    const FIXRATIO: f64 = 0.403548;
     let mut no_improved = 0;
     loop {
         let passed = timer.get_time() / TIMELIMIT;
