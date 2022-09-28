@@ -23,8 +23,12 @@ type Output = Vec<[Point; 4]>;
 // optunaで最適化する用
 #[allow(dead_code)]
 struct ArgParams {
-    tabu_tenure: usize,
-    ratio: f64,
+    // t0: f64,
+    // t1: f64,
+    insert_tabu_tenure: usize,
+    remove_tabu_tenure: usize,
+    ratio_l: f64,
+    ratio_r: f64,
 }
 
 impl ArgParams {
@@ -32,9 +36,20 @@ impl ArgParams {
     fn new() -> Self {
         let mut args = std::env::args();
         args.next();
-        let tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
-        let ratio = args.next().unwrap().parse::<f64>().unwrap();
-        ArgParams { tabu_tenure, ratio }
+        // let t0 = args.next().unwrap().parse::<f64>().unwrap();
+        // let t1 = args.next().unwrap().parse::<f64>().unwrap();
+        let insert_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
+        let remove_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
+        let ratio_l = args.next().unwrap().parse::<f64>().unwrap();
+        let ratio_r = args.next().unwrap().parse::<f64>().unwrap();
+        ArgParams {
+            // t0,
+            // t1,
+            insert_tabu_tenure,
+            remove_tabu_tenure,
+            ratio_l,
+            ratio_r,
+        }
     }
 }
 
@@ -85,7 +100,7 @@ fn annealing<T: Rng>(
     const T0: f64 = 7843.321346;
     const T1: f64 = 7609.796863;
     const INSERTTABUTENURE: usize = 4;
-    const REMOVETABUTENURE: usize = 154;
+    const REMOVETABUTENURE: usize = 81;
     const BACKTOBEST: usize = 16000;
     let back_to_best = BACKTOBEST / input.n;
     let mut temp = T0;
@@ -98,11 +113,12 @@ fn annealing<T: Rng>(
     let mut count = 0;
 
     let mut insert_tabu_list = VecDeque::new();
-    let mut remove_tabu_list: VecDeque<(usize, usize)> = VecDeque::new();
+    let mut remove_tabu_list = VecDeque::new();
 
     let mut insert_long_memory = BTreeMap::new();
     let mut max_inserted_time = 0;
-    const FIXRATIO: f64 = 0.403548;
+    const FIXRATIO_L: f64 = 0.740019;
+    const FIXRATIO_R: f64 = 0.801759;
     let mut no_improved = 0;
     loop {
         let passed = timer.get_time() / TIMELIMIT;
@@ -120,7 +136,7 @@ fn annealing<T: Rng>(
             remove_tabu_list.pop_front();
         }
         let pos = rng.gen_range(0, out.len());
-        if remove_tabu_list.iter().any(|p| *p == out[pos][0]) {
+        if remove_tabu_list.iter().any(|p| *p == out[pos]) {
             continue;
         }
 
@@ -177,10 +193,10 @@ fn annealing<T: Rng>(
             max_inserted_time = max_inserted_time.max(*e);
         }
 
-        for (rect, insert_time) in insert_long_memory.iter() {
+        for (&rect, insert_time) in insert_long_memory.iter() {
             let ratio = *insert_time as f64 / max_inserted_time as f64;
-            if FIXRATIO < ratio {
-                remove_tabu_list.push_back(rect[0]);
+            if FIXRATIO_L < ratio && ratio < FIXRATIO_R {
+                remove_tabu_list.push_back(rect);
             }
         }
 
