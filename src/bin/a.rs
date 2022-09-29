@@ -20,12 +20,12 @@ type Output = Vec<[Point; 4]>;
 // optunaで最適化する用
 #[allow(dead_code)]
 struct ArgParams {
-    // t0: f64,
-    // t1: f64,
-    insert_tabu_tenure: usize,
-    remove_tabu_tenure: usize,
-    ratio_l: f64,
-    ratio_r: f64,
+    t0: f64,
+    t1: f64,
+    // insert_tabu_tenure: usize,
+    // remove_tabu_tenure: usize,
+    // ratio_l: f64,
+    // ratio_r: f64,
 }
 
 impl ArgParams {
@@ -33,19 +33,19 @@ impl ArgParams {
     fn new() -> Self {
         let mut args = std::env::args();
         args.next();
-        // let t0 = args.next().unwrap().parse::<f64>().unwrap();
-        // let t1 = args.next().unwrap().parse::<f64>().unwrap();
-        let insert_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
-        let remove_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
-        let ratio_l = args.next().unwrap().parse::<f64>().unwrap();
-        let ratio_r = args.next().unwrap().parse::<f64>().unwrap();
+        let t0 = args.next().unwrap().parse::<f64>().unwrap();
+        let t1 = args.next().unwrap().parse::<f64>().unwrap();
+        // let insert_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
+        // let remove_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
+        // let ratio_l = args.next().unwrap().parse::<f64>().unwrap();
+        // let ratio_r = args.next().unwrap().parse::<f64>().unwrap();
         ArgParams {
-            // t0,
-            // t1,
-            insert_tabu_tenure,
-            remove_tabu_tenure,
-            ratio_l,
-            ratio_r,
+            t0,
+            t1,
+            // insert_tabu_tenure,
+            // remove_tabu_tenure,
+            // ratio_l,
+            // ratio_r,
         }
     }
 }
@@ -94,8 +94,8 @@ fn annealing<T: Rng>(
     timer: Timer,
     // params: ArgParams,
 ) -> i64 {
-    const T0: f64 = 7843.321346;
-    const T1: f64 = 7609.796863;
+    const T0: f64 = 7991.026452;
+    const T1: f64 = 7911.767400;
     const INSERTTABUTENURE: usize = 4;
     // const REMOVETABUTENURE: usize = 81;
     const BACKTOBEST: usize = 16000;
