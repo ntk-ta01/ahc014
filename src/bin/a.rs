@@ -22,7 +22,6 @@ type Output = Vec<[Point; 4]>;
 struct ArgParams {
     // t0: f64,
     // t1: f64,
-    // select_prob: f64,
     state: u64,
 }
 
@@ -33,7 +32,6 @@ impl ArgParams {
         args.next();
         // let t0 = args.next().unwrap().parse::<f64>().unwrap();
         // let t1 = args.next().unwrap().parse::<f64>().unwrap();
-        // let select_prob = args.next().unwrap().parse::<f64>().unwrap();
         let state = args.next().unwrap().parse::<u64>().unwrap();
         ArgParams {
             // t0,
@@ -46,7 +44,7 @@ impl ArgParams {
 fn main() {
     // let params = ArgParams::new();
     let timer = Timer::new();
-    let mut rng = thread_rng();
+    let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(8949589);
     let input = Input::new();
     let score_weight = ScoreWeight::new(&input);
 
@@ -116,13 +114,11 @@ fn annealing<T: Rng>(
         }
         count += 1;
 
-        let pos = rng.gen_range(0, out.len());
-
         let mut new_state = State::new(input);
         let mut new_out = vec![];
         // 近傍解作成
-        // randomに1個選んで削除
         if !out.is_empty() {
+            let pos = rng.gen_range(0, out.len());
             if rng.gen_bool(0.95) {
                 // 削除近傍
                 for (i, &rect) in out.iter().enumerate() {
@@ -157,9 +153,9 @@ fn annealing<T: Rng>(
                     }
                 }
             }
-        }
-        if insert_tabu_list.len() > INSERTTABUTENURE {
-            insert_tabu_list.pop_front();
+            if insert_tabu_list.len() > INSERTTABUTENURE {
+                insert_tabu_list.pop_front();
+            }
         }
         let mut insertable = construct_insertable(input, &new_state, &insert_tabu_list);
         // insertableをsort
@@ -670,10 +666,9 @@ impl State {
             let dy = (ty as i64 - y as i64).signum() as usize;
             let dir = (0..8).find(|&dir| DXY[dir] == (dx, dy)).unwrap();
             while (x, y) != (tx, ty) {
-                if (x, y) != rect[i] && self.has_point[x as usize][y as usize] {
-                    return false;
-                }
-                if self.used[x as usize][y as usize][dir] {
+                if (x, y) != rect[i] && self.has_point[x as usize][y as usize]
+                    || self.used[x as usize][y as usize][dir]
+                {
                     return false;
                 }
                 x += dx;
