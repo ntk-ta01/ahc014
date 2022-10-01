@@ -70,7 +70,7 @@ fn main() {
         // params,
     );
     println!("{}", best_output.len());
-    for out in best_output.iter() {
+    for out in best_output {
         print!("{} {} ", out[0].0, out[0].1);
         print!("{} {} ", out[1].0, out[1].1);
         print!("{} {} ", out[2].0, out[2].1);
