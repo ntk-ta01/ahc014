@@ -88,7 +88,6 @@ fn annealing<T: Rng>(
     const T0: f64 = 7991.026452;
     const T1: f64 = 7911.767400;
     const INSERTTABUTENURE: usize = 4;
-    // const REMOVETABUTENURE: usize = 81;
     const BACKTOBEST: usize = 19500;
     let back_to_best = BACKTOBEST / input.n;
     let mut temp = T0;
@@ -101,12 +100,7 @@ fn annealing<T: Rng>(
     let mut count = 0;
 
     let mut insert_tabu_list = VecDeque::new();
-    // let mut remove_tabu_list = VecDeque::new();
 
-    // let mut insert_long_memory = BTreeMap::new();
-    // let mut max_inserted_time = 0;
-    // const FIXRATIO_L: f64 = 0.740019;
-    // const FIXRATIO_R: f64 = 0.801759;
     let mut no_improved = 0;
     loop {
         let passed = timer.get_time() / TIMELIMIT;
@@ -120,13 +114,7 @@ fn annealing<T: Rng>(
         }
         count += 1;
 
-        // while remove_tabu_list.len() > REMOVETABUTENURE {
-        //     remove_tabu_list.pop_front();
-        // }
         let pos = rng.gen_range(0, out.len());
-        // if remove_tabu_list.iter().any(|p| *p == out[pos]) {
-        //     continue;
-        // }
 
         let mut new_state = State::new(input);
         let mut new_out = vec![];
@@ -171,17 +159,14 @@ fn annealing<T: Rng>(
         if insert_tabu_list.len() > INSERTTABUTENURE {
             insert_tabu_list.pop_front();
         }
-        // let mut inserted_rects = vec![];
         let mut insertable = construct_insertable(input, &new_state, &insert_tabu_list);
         // insertableをsort
         insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
         if rng.gen_bool(0.959291824) {
             while !insertable.is_empty() {
                 let rect = select_insertable(input, rng, &insertable);
-                // let rect = insertable[0];
                 new_state.apply_move(&rect);
                 out.push(rect);
-                // inserted_rects.push(rect);
                 update_insertable(
                     input,
                     &new_state,
@@ -194,10 +179,8 @@ fn annealing<T: Rng>(
         } else {
             while !insertable.is_empty() {
                 let rect = select_insertable2(input, &new_state, rng, &insertable);
-                // let rect = insertable[0];
                 new_state.apply_move(&rect);
                 out.push(rect);
-                // inserted_rects.push(rect);
                 update_insertable(
                     input,
                     &new_state,
@@ -216,19 +199,6 @@ fn annealing<T: Rng>(
             now_score = new_score;
             *out = new_out;
         }
-
-        // for rect in inserted_rects {
-        //     let e = insert_long_memory.entry(rect).or_insert(0);
-        //     *e += 1;
-        //     max_inserted_time = max_inserted_time.max(*e);
-        // }
-
-        // for (&rect, insert_time) in insert_long_memory.iter() {
-        //     let ratio = *insert_time as f64 / max_inserted_time as f64;
-        //     if FIXRATIO_L < ratio && ratio < FIXRATIO_R {
-        //         remove_tabu_list.push_back(rect);
-        //     }
-        // }
 
         if best_score < now_score {
             // eprintln!("time: {}", timer.get_time());
