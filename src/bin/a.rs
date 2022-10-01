@@ -22,7 +22,8 @@ type Output = Vec<[Point; 4]>;
 struct ArgParams {
     // t0: f64,
     // t1: f64,
-    select_prob: f64,
+    // select_prob: f64,
+    state: u64,
 }
 
 impl ArgParams {
@@ -32,11 +33,12 @@ impl ArgParams {
         args.next();
         // let t0 = args.next().unwrap().parse::<f64>().unwrap();
         // let t1 = args.next().unwrap().parse::<f64>().unwrap();
-        let select_prob = args.next().unwrap().parse::<f64>().unwrap();
+        // let select_prob = args.next().unwrap().parse::<f64>().unwrap();
+        let state = args.next().unwrap().parse::<u64>().unwrap();
         ArgParams {
             // t0,
             // t1,
-            select_prob,
+            state,
         }
     }
 }
@@ -44,7 +46,7 @@ impl ArgParams {
 fn main() {
     // let params = ArgParams::new();
     let timer = Timer::new();
-    let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(0);
+    let mut rng = thread_rng();
     let input = Input::new();
     let score_weight = ScoreWeight::new(&input);
 
