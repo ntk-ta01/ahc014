@@ -4,36 +4,39 @@ import joblib
 import statistics
 
 n_cores = -1
-n_files = 100
+n_files = 300
 
 
-def calc_score_each(seed: int, t0: float, t1: float, back_to_best: int):
+def calc_score_each(seed: int, select_prob: float):
     in_file = open(f"tools/in/{seed:04}.txt", 'r')
     # out_file = open(f"tools/out/{seed:04}.txt", 'w')
-    process = subprocess.run(["cargo", "run", "--release", str(t0), str(t1), str(back_to_best)],
+    process = subprocess.run(["cargo", "run", "--release", str(select_prob)],
                              stdin=in_file, stdout=subprocess.DEVNULL, encoding='utf-8', stderr=subprocess.PIPE)
     return int(process.stderr.split(':')[-1].strip())
 
 
-def calc_score(t0: float, t1: float, back_to_best: int):
+def calc_score(select_prob: float):
     return joblib.Parallel(n_jobs=n_cores)(
-        joblib.delayed(calc_score_each)(i, t0, t1, back_to_best) for i in range(n_files)
+        joblib.delayed(calc_score_each)(i, select_prob) for i in range(n_files)
     )
 
 
 def objective(trial: optuna.trial.Trial):
-    t0 = trial.suggest_float("t0", 6000.0, 9000.0)
-    t1 = trial.suggest_float("t1", 5000.0, t0)
-    back_to_best = trial.suggest_int("back_to_best", 1000, 30000)
-    scores = calc_score(t0, t1, back_to_best)
+    # t0 = trial.suggest_float("t0", 5000.0, 8000.0)
+    # t1 = trial.suggest_float("t1", 2999.9, t0)
+    # insert_tabu_tenure = trial.suggest_int("insert_tabu_tenure", 2, 80)
+    # remove_tabu_tenure = trial.suggest_int("remove_tabu_tenure", 2, 160)
+    # ratio_r = trial.suggest_float("ratio_r", 0.0001, 0.9999)
+    # ratio_l = trial.suggest_float("ratio_l", 0.0001, ratio_r)
+    select_prob = trial.suggest_float("select_prob", 0.01, 0.99)
+    scores = calc_score(select_prob)
     return statistics.mean(scores)
 
 
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize",
                                 storage="sqlite:///ahc014.db",
-                                study_name="tune_temp_and_backToBest",
-                                load_if_exists=True)
-    study.optimize(objective, n_trials=1000)
+                                study_name="tune_select_prob")
+    study.optimize(objective, n_trials=150)
     print(study.best_params)
     print(study.best_value)
