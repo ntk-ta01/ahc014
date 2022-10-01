@@ -24,10 +24,6 @@ def calc_score(select_prob: float):
 def objective(trial: optuna.trial.Trial):
     # t0 = trial.suggest_float("t0", 5000.0, 8000.0)
     # t1 = trial.suggest_float("t1", 2999.9, t0)
-    # insert_tabu_tenure = trial.suggest_int("insert_tabu_tenure", 2, 80)
-    # remove_tabu_tenure = trial.suggest_int("remove_tabu_tenure", 2, 160)
-    # ratio_r = trial.suggest_float("ratio_r", 0.0001, 0.9999)
-    # ratio_l = trial.suggest_float("ratio_l", 0.0001, ratio_r)
     select_prob = trial.suggest_float("select_prob", 0.01, 0.99)
     scores = calc_score(select_prob)
     return statistics.mean(scores)

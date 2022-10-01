@@ -23,10 +23,6 @@ struct ArgParams {
     // t0: f64,
     // t1: f64,
     select_prob: f64,
-    // insert_tabu_tenure: usize,
-    // remove_tabu_tenure: usize,
-    // ratio_l: f64,
-    // ratio_r: f64,
 }
 
 impl ArgParams {
@@ -37,18 +33,10 @@ impl ArgParams {
         // let t0 = args.next().unwrap().parse::<f64>().unwrap();
         // let t1 = args.next().unwrap().parse::<f64>().unwrap();
         let select_prob = args.next().unwrap().parse::<f64>().unwrap();
-        // let insert_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
-        // let remove_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
-        // let ratio_l = args.next().unwrap().parse::<f64>().unwrap();
-        // let ratio_r = args.next().unwrap().parse::<f64>().unwrap();
         ArgParams {
             // t0,
             // t1,
             select_prob,
-            // insert_tabu_tenure,
-            // remove_tabu_tenure,
-            // ratio_l,
-            // ratio_r,
         }
     }
 }
