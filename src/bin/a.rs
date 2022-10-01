@@ -101,7 +101,7 @@ fn annealing<T: Rng>(
     const T1: f64 = 7911.767400;
     const INSERTTABUTENURE: usize = 4;
     // const REMOVETABUTENURE: usize = 81;
-    const BACKTOBEST: usize = 16000;
+    const BACKTOBEST: usize = 19500;
     let back_to_best = BACKTOBEST / input.n;
     let mut temp = T0;
     // let mut temp = params.t0;
