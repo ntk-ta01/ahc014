@@ -20,8 +20,9 @@ type Output = Vec<[Point; 4]>;
 // optunaで最適化する用
 #[allow(dead_code)]
 struct ArgParams {
-    t0: f64,
-    t1: f64,
+    // t0: f64,
+    // t1: f64,
+    select_prob: f64,
     // insert_tabu_tenure: usize,
     // remove_tabu_tenure: usize,
     // ratio_l: f64,
@@ -33,15 +34,17 @@ impl ArgParams {
     fn new() -> Self {
         let mut args = std::env::args();
         args.next();
-        let t0 = args.next().unwrap().parse::<f64>().unwrap();
-        let t1 = args.next().unwrap().parse::<f64>().unwrap();
+        // let t0 = args.next().unwrap().parse::<f64>().unwrap();
+        // let t1 = args.next().unwrap().parse::<f64>().unwrap();
+        let select_prob = args.next().unwrap().parse::<f64>().unwrap();
         // let insert_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
         // let remove_tabu_tenure = args.next().unwrap().parse::<usize>().unwrap();
         // let ratio_l = args.next().unwrap().parse::<f64>().unwrap();
         // let ratio_r = args.next().unwrap().parse::<f64>().unwrap();
         ArgParams {
-            t0,
-            t1,
+            // t0,
+            // t1,
+            select_prob,
             // insert_tabu_tenure,
             // remove_tabu_tenure,
             // ratio_l,
@@ -184,20 +187,38 @@ fn annealing<T: Rng>(
         let mut insertable = construct_insertable(input, &new_state, &insert_tabu_list);
         // insertableをsort
         insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
-        while !insertable.is_empty() {
-            let rect = select_insertable(input, rng, &insertable);
-            // let rect = insertable[0];
-            new_state.apply_move(&rect);
-            out.push(rect);
-            // inserted_rects.push(rect);
-            update_insertable(
-                input,
-                &new_state,
-                rect[0],
-                &mut insertable,
-                &insert_tabu_list,
-            );
-            insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+        if rng.gen_bool(0.959291824) {
+            while !insertable.is_empty() {
+                let rect = select_insertable(input, rng, &insertable);
+                // let rect = insertable[0];
+                new_state.apply_move(&rect);
+                out.push(rect);
+                // inserted_rects.push(rect);
+                update_insertable(
+                    input,
+                    &new_state,
+                    rect[0],
+                    &mut insertable,
+                    &insert_tabu_list,
+                );
+                insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+            }
+        } else {
+            while !insertable.is_empty() {
+                let rect = select_insertable2(input, &new_state, rng, &insertable);
+                // let rect = insertable[0];
+                new_state.apply_move(&rect);
+                out.push(rect);
+                // inserted_rects.push(rect);
+                update_insertable(
+                    input,
+                    &new_state,
+                    rect[0],
+                    &mut insertable,
+                    &insert_tabu_list,
+                );
+                insertable.sort_by_key(|rect| (area(rect), cmp::Reverse(weight(rect[0], input.n))));
+            }
         }
 
         // 近傍解作成ここまで
@@ -537,6 +558,117 @@ fn select_insertable<T: Rng>(input: &Input, rng: &mut T, insertable: &[[Point; 4
     unreachable!();
 }
 
+fn select_insertable2<T: Rng>(
+    input: &Input,
+    state: &State,
+    rng: &mut T,
+    insertable: &[[Point; 4]],
+) -> [Point; 4] {
+    let mut weights = vec![0.0; insertable.len()];
+    // 各挿入によって増える新規の挿入点の個数を重みとしてroulette-wheel-selection
+    for (rect, ws) in insertable.iter().zip(weights.iter_mut()) {
+        let mut state = state.clone();
+        state.apply_move(rect);
+        let inc_num = construct_insertable_one_point(input, &state, rect[0]);
+        // let w = weight(rect[0], input.n);
+        *ws = inc_num as f64;
+    }
+    let sum = weights.iter().sum::<f64>();
+    let mut prob = vec![0.0; insertable.len()];
+    for (p, w) in prob.iter_mut().zip(weights) {
+        *p = w / sum;
+    }
+    let mut accum_prob = 0.0;
+    for (&rect, &pr) in insertable.iter().zip(prob.iter()) {
+        accum_prob += pr;
+        if 1.0 < accum_prob || rng.gen_bool(accum_prob) {
+            return rect;
+        }
+    }
+    unreachable!();
+}
+
+fn construct_insertable_one_point(input: &Input, state: &State, pre_p0: Point) -> i64 {
+    // pre_p0を打つと増える打てる点の個数を返す
+    // [0, 8]？
+    // pre_p0から8方向のそれぞれで一番近い点を探す
+    let mut near_points = vec![];
+    for &(dx, dy) in DXY.iter() {
+        let (mut x, mut y) = pre_p0;
+        let mut found = false;
+        x += dx;
+        y += dy;
+        while x < input.n && y < input.n {
+            if state.has_point[x][y] {
+                near_points.push((x, y));
+                found = true;
+                break;
+            }
+            x += dx;
+            y += dy;
+        }
+        if !found {
+            near_points.push((!0, !0));
+        }
+    }
+    let mut ret_insertable_num = 0;
+    // pre_p0から8方向にp0候補を探しに行く p0候補は!has_pointである
+    for (i, &(dx, dy)) in DXY.iter().enumerate() {
+        // pre_p0をp1とする方針
+        {
+            let (mut x, mut y) = pre_p0;
+            x += dx;
+            y += dy;
+            while x < input.n && y < input.n && !state.has_point[x][y] {
+                // p0はこれから印を打ちたい点
+                let p0 = (x, y);
+                // p1 = pre_p0
+                // p2 = (pre_p0から {-2, +2}方向の点)
+                // p3を探す
+                let p1 = pre_p0;
+                let dir = i ^ 4;
+                for j in [8 - 2, 2].iter() {
+                    let search_dir = (dir + j) % 8;
+                    let p2 = near_points[search_dir];
+                    if p2 != (!0, !0) {
+                        let dx10 = p0.0 as i64 - p1.0 as i64;
+                        let dy10 = p0.1 as i64 - p1.1 as i64;
+                        let p3 = ((p2.0 as i64 + dx10) as usize, (p2.1 as i64 + dy10) as usize);
+                        let rect = [p0, p1, p2, p3];
+                        if p3.0 < input.n && p3.1 < input.n && state.check_move(&rect) {
+                            ret_insertable_num += 1;
+                        }
+                    }
+                }
+                x += dx;
+                y += dy;
+            }
+        }
+        {
+            // pre_p0をp2とする方針
+            // (i+1) % 8方向にp0が存在するか調べる
+            // p1 = i方向の点
+            // p2 = pre_p0
+            // p3 = (i+2) % 8方向の点
+            let p1 = near_points[i];
+            let p2 = pre_p0;
+            let p3 = near_points[(i + 2) % 8];
+            if p1 == (!0, !0) || p3 == (!0, !0) {
+                continue;
+            }
+            let dx21 = p1.0 as i64 - p2.0 as i64;
+            let dy21 = p1.1 as i64 - p2.1 as i64;
+            let p0 = ((p3.0 as i64 + dx21) as usize, (p3.1 as i64 + dy21) as usize);
+            let rect = [p0, p1, p2, p3];
+            if p0.0 < input.n && p0.1 < input.n && state.check_move(&rect) {
+                ret_insertable_num += 1;
+            }
+        }
+    }
+    ret_insertable_num + 1
+}
+
+#[derive(Debug, Clone)]
 struct State {
     has_point: Vec<Vec<bool>>,
     used: Vec<Vec<[bool; 8]>>,
