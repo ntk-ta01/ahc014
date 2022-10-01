@@ -570,8 +570,8 @@ fn select_insertable2<T: Rng>(
         let mut state = state.clone();
         state.apply_move(rect);
         let inc_num = construct_insertable_one_point(input, &state, rect[0]);
-        // let w = weight(rect[0], input.n);
-        *ws = inc_num as f64;
+        let w = weight(rect[0], input.n);
+        *ws = (w * w * inc_num * inc_num * inc_num) as f64;
     }
     let sum = weights.iter().sum::<f64>();
     let mut prob = vec![0.0; insertable.len()];
